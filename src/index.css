@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Libre Baskerville", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply font-sans antialiased bg-[#EDF8F2] text-[#1D3441];
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-[#D8EDE2] shadow-[0_16px_38px_rgba(39,74,63,0.08)];
+  }
+  
+  .glass-sidebar {
+    @apply bg-[#F2FBF6]/80 backdrop-blur-2xl border-r border-[#D7ECE2]/85;
+  }
+
+  .atmosphere {
+    background: 
+      radial-gradient(circle at 15% 8%, rgba(47, 189, 131, 0.16) 0%, transparent 42%),
+      radial-gradient(circle at 78% 82%, rgba(117, 211, 172, 0.2) 0%, transparent 46%),
+      radial-gradient(circle at 50% -10%, rgba(207, 241, 226, 0.72) 0%, transparent 58%);
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    transition: all 1s ease;
+  }
+
+  .lofi-noise {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  .zen-gradient {
+    background: radial-gradient(circle at center, rgba(19, 185, 109, 0.08) 0%, transparent 70%);
+  }
+
+  .pomodoro-gradient {
+    background:
+      radial-gradient(980px 640px at 16% 18%, rgba(112, 219, 171, 0.3) 0%, transparent 54%),
+      radial-gradient(820px 520px at 84% 80%, rgba(53, 183, 128, 0.16) 0%, transparent 58%),
+      radial-gradient(760px 540px at 50% 58%, rgba(232, 248, 241, 0.88) 0%, transparent 64%),
+      linear-gradient(135deg, #e7f5ee 0%, #eef9f3 45%, #e4f4ec 100%);
+  }
+
+  .pomodoro-vignette {
+    background:
+      radial-gradient(circle at 52% 46%, rgba(90, 199, 151, 0.14) 0%, transparent 44%),
+      radial-gradient(circle at 85% 100%, rgba(48, 99, 82, 0.2) 8%, transparent 62%),
+      radial-gradient(circle at 15% 0%, rgba(176, 227, 204, 0.24) 8%, transparent 57%);
+    pointer-events: none;
+  }
+
+  .pomodoro-blob {
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .progress-ring {
+    @apply transition-all duration-700 ease-out;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-[#C1E4D2] rounded-full hover:bg-[#A7D9C3] transition-colors;
+  }
+}
