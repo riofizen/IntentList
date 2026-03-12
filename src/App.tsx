@@ -47,7 +47,10 @@ const Auth: React.FC<{ onLogin: (user: User) => void; initialMode: AuthMode; onB
         : await authService.signup(email, password);
       onLogin(user);
     } catch (err) {
-      setError(isLogin ? 'Invalid email or password' : 'User already exists');
+      const message = err instanceof Error
+        ? err.message
+        : (isLogin ? 'Invalid email or password' : 'User already exists');
+      setError(message);
     }
   };
 
@@ -617,7 +620,8 @@ export default function App() {
             setSelectedTag(null);
           }} 
           counts={counts}
-          onLogout={() => {
+          onLogout={async () => {
+            await authService.logout();
             setUser(null);
             setAuthMode('login');
             setAuthScreen('landing');
