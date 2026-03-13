@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Check, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 
 interface ProModalProps {
   isOpen: boolean;
@@ -31,9 +32,9 @@ export const ProModal: React.FC<ProModalProps> = ({ isOpen, onClose, onUpgrade }
                 <motion.div 
                   initial={{ rotate: -15 }}
                   animate={{ rotate: 0 }}
-                  className="w-16 h-16 bg-[#13B96D] rounded-[1.5rem] flex items-center justify-center shadow-2xl shadow-[#13B96D]/25"
+                  className="w-16 h-16 rounded-[1.5rem] border border-[#CEE6DB] bg-white/88 p-3.5 shadow-2xl shadow-[#13B96D]/15"
                 >
-                  <Sparkles className="w-8 h-8 text-white" />
+                  <BrandLogo />
                 </motion.div>
                 <button onClick={onClose} className="p-3 hover:bg-[#F1FAF6] rounded-2xl transition-all duration-300">
                   <X className="w-6 h-6 text-[#6B8D86]" />

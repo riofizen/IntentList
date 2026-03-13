@@ -24,6 +24,7 @@ import { cn } from "../App";
 import { useLocalStorage } from "../lib/useLocalStorage";
 import { getFocusInsight } from "../services/focusInsight";
 import { MindfulBreathing } from "./MindfulBreathing";
+import { BrandLogo } from "./BrandLogo";
 
 type TimerMode = "pomodoro" | "shortBreak" | "longBreak";
 type TimerActionType = "start" | "pause" | "reset" | "mode_switch" | "session_complete";
@@ -390,18 +391,27 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
         )}
       >
         <div className="grid grid-cols-1 gap-2 md:grid-cols-[auto_1fr_auto] md:items-start">
-          <div>
-            <h2
+          <div className="flex items-center gap-3">
+            <BrandLogo
               className={cn(
-                "font-black tracking-[-0.03em] text-[#17323F]",
-                isCompactLayout ? "text-3xl md:text-5xl" : "text-4xl md:text-6xl",
+                "shrink-0 rounded-[1.6rem] border border-[#CBE5D8] bg-white/84 shadow-lg shadow-[#2A5B4A]/10",
+                isCompactLayout ? "h-12 w-12 p-2.5" : "h-14 w-14 p-3",
               )}
-            >
-              Focus Orbit
-            </h2>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.34em] text-[#6C8F87]">
-              by IntentList
-            </p>
+              alt="Focus Orbit logo"
+            />
+            <div>
+              <h2
+                className={cn(
+                  "font-black tracking-[-0.03em] text-[#17323F]",
+                  isCompactLayout ? "text-3xl md:text-5xl" : "text-4xl md:text-6xl",
+                )}
+              >
+                Focus Orbit
+              </h2>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.34em] text-[#6C8F87]">
+                by IntentList
+              </p>
+            </div>
           </div>
 
           <div className={cn(panelClass, isCompactLayout ? "px-4 py-2.5 md:mx-4" : "px-4 py-3 md:mx-5")}>

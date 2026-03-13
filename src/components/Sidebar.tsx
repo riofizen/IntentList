@@ -1,8 +1,9 @@
 import React from 'react';
-import { Calendar as CalendarIcon, CheckCircle2, Clock, List, LogOut, History, Sparkles, Timer } from 'lucide-react';
+import { Calendar as CalendarIcon, CheckCircle2, Clock, List, LogOut, History, Timer } from 'lucide-react';
 import { ViewType } from '../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { BrandLogo } from './BrandLogo';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -42,9 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className={cn("w-72 border-r border-[#D7ECE2]/85 h-full flex flex-col glass-sidebar relative z-20", className)}>
       <div className="p-8 flex items-center gap-3">
-        <div className="w-10 h-10 bg-[#13B96D] rounded-2xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-[#13B96D]/25">
-          <Sparkles className="w-5 h-5" />
-        </div>
+        <BrandLogo className="h-10 w-10 shrink-0 rounded-2xl border border-[#CEE6DB] bg-white/88 p-2 shadow-lg shadow-[#13B96D]/10" />
         <h1 className="text-2xl font-serif italic text-[#1A3142] tracking-tight">IntentList</h1>
       </div>
       

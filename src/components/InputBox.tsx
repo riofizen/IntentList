@@ -1,10 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { parseIntent } from '../lib/parser';
-import { format } from 'date-fns';
+import { parseIntent, type ParsedIntent } from '../lib/parser';
 
 interface InputBoxProps {
-  onAddTask: (text: string, date: string, time: string | null, isAdvanced: boolean) => void;
+  onAddTask: (intent: ParsedIntent) => void;
   selectedDate?: Date;
 }
 
@@ -16,8 +15,7 @@ export const InputBox: React.FC<InputBoxProps> = ({ onAddTask, selectedDate }) =
     e.preventDefault();
     if (!input.trim()) return;
 
-    const { text, date, time, isAdvanced } = parseIntent(input, selectedDate || new Date());
-    onAddTask(text, format(date, 'yyyy-MM-dd'), time, isAdvanced);
+    onAddTask(parseIntent(input, selectedDate || new Date()));
     setInput('');
   };
 
@@ -43,7 +41,7 @@ export const InputBox: React.FC<InputBoxProps> = ({ onAddTask, selectedDate }) =
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Brain dump your thoughts... (e.g. 'buy milk tomorrow morning @home')"
-        className="w-full pl-16 pr-6 py-6 bg-white/90 border border-[#CCE4D8] rounded-[2rem] shadow-[0_8px_30px_rgb(29,73,58,0.08)] focus:outline-none focus:ring-4 focus:ring-[#13B96D]/10 focus:border-[#13B96D]/40 transition-all duration-500 text-[#1D3441] placeholder:text-[#90AEA4] text-lg tracking-tight"
+        className="w-full pl-14 pr-4 py-5 text-base tracking-tight bg-white/90 border border-[#CCE4D8] rounded-[1.6rem] shadow-[0_8px_30px_rgb(29,73,58,0.08)] focus:outline-none focus:ring-4 focus:ring-[#13B96D]/10 focus:border-[#13B96D]/40 transition-all duration-500 text-[#1D3441] placeholder:text-[#90AEA4] sm:pl-16 sm:pr-6 sm:py-6 sm:text-lg sm:rounded-[2rem]"
       />
       <div className="absolute right-6 inset-y-0 flex items-center">
         <kbd className="hidden sm:inline-block px-3 py-1.5 text-[10px] font-mono text-[#6B8D86] border border-[#CDE5DA] rounded-xl bg-[#F4FBF7] tracking-widest">

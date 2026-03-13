@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Sparkles } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 
 interface EntranceAnimaticProps {
   onComplete: () => void;
@@ -48,9 +48,9 @@ export const EntranceAnimatic: React.FC<EntranceAnimaticProps> = ({ onComplete }
             <motion.div
               animate={{ rotate: [0, 7, 0], scale: [1, 1.05, 1] }}
               transition={{ duration: 5.2, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-24 h-24 mx-auto rounded-[1.8rem] bg-[#15B56A] text-white flex items-center justify-center shadow-[0_14px_45px_rgba(21,181,106,0.35)]"
+              className="w-24 h-24 mx-auto rounded-[1.8rem] border border-[#CFE8DC] bg-white/88 p-5 shadow-[0_14px_45px_rgba(21,181,106,0.18)]"
             >
-              <Sparkles className="w-10 h-10" />
+              <BrandLogo alt="Focus Orbit logo" />
             </motion.div>
             <p className="mt-5 text-[11px] font-semibold tracking-[0.35em] uppercase text-[#2E5751]">
               Focus Orbit

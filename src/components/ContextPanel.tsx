@@ -1,16 +1,19 @@
 import React from 'react';
 import { Task } from '../types';
 import { format, isToday, parseISO, startOfToday } from 'date-fns';
-import { TrendingUp, CheckCircle2, AlertCircle, Calendar, Clock, Tag } from 'lucide-react';
+import { TrendingUp, CheckCircle2, AlertCircle, Calendar, Clock, Tag, X } from 'lucide-react';
+import { cn } from './Sidebar';
 
 interface ContextPanelProps {
   tasks: Task[];
   selectedDate: Date;
   selectedTask?: Task | null;
   onUpgrade: () => void;
+  className?: string;
+  onClose?: () => void;
 }
 
-export const ContextPanel: React.FC<ContextPanelProps> = ({ tasks, selectedDate, selectedTask, onUpgrade }) => {
+export const ContextPanel: React.FC<ContextPanelProps> = ({ tasks, selectedDate, selectedTask, onUpgrade, className, onClose }) => {
   const completedToday = tasks.filter(t => t.completed && isToday(parseISO(t.createdAt))).length;
   const overdueCount = tasks.filter(t => !t.completed && parseISO(t.date) < startOfToday() && !isToday(parseISO(t.date))).length;
   
@@ -22,7 +25,21 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({ tasks, selectedDate,
   const allCompletedToday = dayTasks.length > 0 && dayTasks.every(t => t.completed);
 
   return (
-    <div className="w-80 border-l border-[#D7ECE2] h-full bg-[#F2FBF6]/80 p-8 space-y-10 overflow-y-auto custom-scrollbar">
+    <div className={cn("w-80 border-l border-[#D7ECE2] h-full bg-[#F2FBF6]/80 p-8 space-y-10 overflow-y-auto custom-scrollbar", className)}>
+      {onClose && (
+        <div className="-mt-1 mb-2 flex items-center justify-between">
+          <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-[#6B8D86]">
+            {selectedTask ? 'Task details' : 'Insights'}
+          </p>
+          <button
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#D5EADF] bg-white/90 text-[#5E7B76] transition hover:text-[#1A3142]"
+            aria-label="Close insights"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       {selectedTask ? (
         <section className="space-y-8">
           <h3 className="text-[10px] font-mono uppercase tracking-widest text-[#6B8D86]">

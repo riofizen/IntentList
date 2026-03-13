@@ -8,13 +8,14 @@ import { TaskList } from './components/TaskList';
 import { Calendar } from './components/Calendar';
 import { ContextPanel } from './components/ContextPanel';
 import { ProModal } from './components/ProModal';
+import { BrandLogo } from './components/BrandLogo';
 import { taskService, authService } from './services/api';
-import { parseIntent } from './lib/parser';
+import { type ParsedIntent } from './lib/parser';
 import { parseWithAI } from './services/aiParser';
 import { suggestSubtasks } from './services/taskBreakdown';
 import { isToday, isTomorrow, parseISO, startOfToday, isYesterday, isSameWeek, isSameMonth, subWeeks, subMonths, format, addDays, startOfMonth } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
-import { Undo2, AlertCircle, ChevronRight, ChevronLeft, Sparkles, X, Clock3, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Undo2, AlertCircle, ChevronRight, ChevronLeft, Sparkles, X, Clock3, ShieldCheck, CheckCircle2, Menu } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useLocalStorage } from './lib/useLocalStorage';
@@ -73,9 +74,9 @@ const Auth: React.FC<{ onLogin: (user: User) => void; initialMode: AuthMode; onB
           <motion.div 
             initial={{ rotate: -10, scale: 0.8 }}
             animate={{ rotate: 0, scale: 1 }}
-            className="w-16 h-16 bg-[#13B96D] rounded-3xl flex items-center justify-center text-white shadow-xl shadow-[#13B96D]/30"
+            className="w-16 h-16 rounded-3xl border border-[#CDE6DB] bg-white/88 p-3.5 shadow-xl shadow-[#13B96D]/15"
           >
-            <Sparkles className="w-8 h-8" />
+            <BrandLogo />
           </motion.div>
           <div className="text-center">
             <h1 className="text-4xl font-serif italic text-[#1A3142] tracking-tight">IntentList</h1>
@@ -154,9 +155,7 @@ const LandingPage: React.FC<{ onLogin: () => void; onSignup: () => void }> = ({ 
       <div className="relative z-10 min-h-screen px-6 py-6 md:px-10 md:py-8 flex flex-col">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#13B96D] flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
+            <BrandLogo className="h-10 w-10 rounded-2xl border border-[#CFE6DA] bg-white/85 p-1.5 shadow-sm" alt="Focus Orbit logo" />
             <div>
               <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Focus Orbit</h1>
             </div>
@@ -215,9 +214,7 @@ const LandingPage: React.FC<{ onLogin: () => void; onSignup: () => void }> = ({ 
         <section className="rounded-3xl border border-[#D7EBE1] bg-white/55 backdrop-blur-md px-6 py-5 md:px-10 md:py-8">
           <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr_1fr] gap-6 items-center">
             <div className="text-left">
-              <div className="w-7 h-7 rounded-full bg-[#13B96D]/15 border border-[#13B96D]/25 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-[#139C5E]" />
-              </div>
+              <BrandLogo className="h-7 w-7 rounded-full border border-[#13B96D]/25 bg-white/88 p-1" alt="IntentList logo" />
               <h3 className="mt-3 text-2xl font-semibold text-[#1D3340]">The Vibe</h3>
               <p className="mt-1 text-sm text-[#5A7481]">Organic motion inspired by the quiet pulses of nature.</p>
             </div>
@@ -268,6 +265,9 @@ export default function App() {
   const [pomodoroTimeLeft, setPomodoroTimeLeft] = useLocalStorage<number>('pomodoro_time', 25 * 60);
   const [pomodoroIsActive, setPomodoroIsActive] = useState(false); // Don't persist active state for safety
   const [pomodoroIsMuted, setPomodoroIsMuted] = useLocalStorage<boolean>('pomodoro_muted', false);
+  const [isMobileLayout, setIsMobileLayout] = useState(() => window.innerWidth < 1024);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isMobileContextOpen, setIsMobileContextOpen] = useState(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -294,6 +294,13 @@ export default function App() {
   }, [pomodoroIsActive, pomodoroTimeLeft, pomodoroMode, pomodoroIsMuted]);
 
   useEffect(() => {
+    const handleResize = () => setIsMobileLayout(window.innerWidth < 1024);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
     if (user) {
       localStorage.setItem('intentlist_user', JSON.stringify(user));
       loadTasks();
@@ -309,30 +316,44 @@ export default function App() {
     }
   }, [showProWelcome]);
 
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [activeView]);
+
+  useEffect(() => {
+    if (!isMobileLayout) {
+      setIsMobileNavOpen(false);
+      setIsMobileContextOpen(false);
+      return;
+    }
+
+    if (selectedTaskId) {
+      setIsMobileContextOpen(true);
+    }
+  }, [isMobileLayout, selectedTaskId]);
+
   const loadTasks = async () => {
     if (!user) return;
     const data = await taskService.getTasks(user.id);
     setTasks(data);
   };
 
-  const handleAddTask = async (text: string, date: string, time: string | null, isAdvanced: boolean) => {
+  const handleAddTask = async (parsed: ParsedIntent) => {
     if (!user) return;
     
     if (user.plan === 'free') {
-      if (tasks.length >= FREE_TASK_LIMIT || isAdvanced) {
+      if (tasks.length >= FREE_TASK_LIMIT || parsed.isAdvanced) {
         setIsProModalOpen(true);
         return;
       }
     }
 
-    // 1. Create initial task object with rule-based results
-    const parsed = parseIntent(text);
     const newTask: Task = {
       id: Math.random().toString(36).substr(2, 9),
       userId: user.id,
       text: parsed.text,
-      date: date,
-      time: time,
+      date: format(parsed.date, 'yyyy-MM-dd'),
+      time: parsed.time,
       completed: false,
       priority: parsed.priority,
       tags: parsed.tags,
@@ -349,7 +370,7 @@ export default function App() {
       // AI refinement for Pro users
       if (user.plan === 'pro') {
         try {
-          const aiResult = await parseWithAI(text, selectedDate);
+          const aiResult = await parseWithAI(parsed.raw, selectedDate);
           if (aiResult) {
             finalTask = {
               ...finalTask,
@@ -568,6 +589,22 @@ export default function App() {
     return Math.round((todayTasks.filter(t => t.completed).length / todayTasks.length) * 100);
   }, [tasks]);
   const isPomodoroView = activeView === 'pomodoro';
+  const handleSelectTask = (id: string) => {
+    setSelectedTaskId(id);
+    if (isMobileLayout) {
+      setIsMobileContextOpen(true);
+    }
+  };
+
+  const handleViewChange = (view: ViewType) => {
+    setActiveView(view);
+    setSelectedTaskId(null);
+    setSelectedTag(null);
+    setIsMobileNavOpen(false);
+    if (view === 'pomodoro') {
+      setIsMobileContextOpen(false);
+    }
+  };
 
   if (showEntrance) {
     return (
@@ -611,14 +648,10 @@ export default function App() {
           isZenMode && "opacity-10 scale-150 blur-[100px]"
         )} />
       )}
-      {!isPomodoroView && (
+      {!isPomodoroView && !isMobileLayout && (
         <Sidebar 
           activeView={activeView} 
-          onViewChange={(view) => {
-            setActiveView(view);
-            setSelectedTaskId(null);
-            setSelectedTag(null);
-          }} 
+          onViewChange={handleViewChange}
           counts={counts}
           onLogout={async () => {
             await authService.logout();
@@ -640,28 +673,57 @@ export default function App() {
         }}
       >
         <div className={cn(
-          "max-w-4xl w-full mx-auto px-8 pt-16 pb-8 flex-1 flex flex-col overflow-hidden transition-all duration-700", 
+          "max-w-4xl w-full mx-auto px-4 pt-6 pb-6 flex-1 flex flex-col overflow-hidden transition-all duration-700 sm:px-6 sm:pt-8 lg:px-8 lg:pt-16 lg:pb-8", 
           isPomodoroView && "max-w-full px-0 pt-0 pb-0",
           isDeepWorkMode && "max-w-2xl pt-32",
           isZenMode && "max-w-full px-0 pt-0"
         )}>
+          {!isPomodoroView && !(isDeepWorkMode || isZenMode) && (
+            <div className="mb-5 flex items-center justify-between gap-3 lg:hidden">
+              <button
+                onClick={() => setIsMobileNavOpen(true)}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#CFE6DA] bg-white/85 text-[#42635C] shadow-sm transition hover:border-[#13B96D]/45 hover:text-[#12935A]"
+                aria-label="Open navigation"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <div className="min-w-0 flex flex-1 items-center justify-center gap-3">
+                <BrandLogo className="h-10 w-10 rounded-2xl border border-[#CFE6DA] bg-white/85 p-1.5 shadow-sm" alt="Focus Orbit logo" />
+                <div className="min-w-0 text-left">
+                  <p className="truncate text-sm font-semibold tracking-tight text-[#1A3142]">
+                    {activeView === 'today' ? `Hello, ${user.email.split('@')[0]}` : activeView.charAt(0).toUpperCase() + activeView.slice(1)}
+                  </p>
+                  <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-[#6B8D86]">
+                    Focus Orbit
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsMobileContextOpen(true)}
+                className="rounded-2xl border border-[#CFE6DA] bg-white/85 px-3 py-3 text-[10px] font-mono uppercase tracking-[0.24em] text-[#42635C] shadow-sm transition hover:border-[#13B96D]/45 hover:text-[#12935A]"
+              >
+                {selectedTask ? 'Task' : 'Insights'}
+              </button>
+            </div>
+          )}
+
           <header className={cn(
-            "mb-16 flex items-end justify-between transition-all duration-700", 
+            "mb-10 flex flex-col gap-6 transition-all duration-700 lg:mb-16", 
             (isDeepWorkMode || isZenMode || isPomodoroView) && "opacity-0 pointer-events-none mb-0 h-0"
           )}>
-            <div className="flex-1 mr-8">
+            <div className="flex-1 lg:mr-8">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8"
+                className="mb-6 lg:mb-8"
               >
-                <div className="flex items-center justify-between">
-                  <h2 className="text-3xl font-serif italic text-[#1A3142]">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <h2 className="text-2xl font-serif italic text-[#1A3142] sm:text-3xl">
                     {activeView === 'today' ? `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, ${user.email.split('@')[0]}` : activeView.charAt(0).toUpperCase() + activeView.slice(1)}
                   </h2>
                   <button 
                     onClick={() => setIsDeepWorkMode(!isDeepWorkMode)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 border border-[#CFE6DA] text-[10px] font-mono tracking-widest uppercase text-[#5B7A75] hover:text-[#128D57] hover:border-[#13B96D]/40 transition-all shadow-sm"
+                    className="flex items-center gap-2 self-start px-4 py-2 rounded-full bg-white/90 border border-[#CFE6DA] text-[10px] font-mono tracking-widest uppercase text-[#5B7A75] hover:text-[#128D57] hover:border-[#13B96D]/40 transition-all shadow-sm"
                   >
                     <Sparkles className="w-3 h-3" />
                     Deep Work
@@ -689,7 +751,7 @@ export default function App() {
 
           <div className={cn(
             "flex-1 flex flex-col transition-all duration-1000",
-            isZenMode ? "overflow-hidden" : isPomodoroView ? "overflow-visible" : "overflow-y-auto pr-2 custom-scrollbar"
+            isZenMode ? "overflow-hidden" : isPomodoroView ? "overflow-visible" : "overflow-y-auto pr-0 custom-scrollbar sm:pr-2"
           )}>
             <AnimatePresence mode="wait">
               {isDeepWorkMode ? (
@@ -795,7 +857,7 @@ export default function App() {
                         onToggle={handleToggleTask}
                         onDelete={handleDeleteTask}
                         onUpdatePriority={handleUpdatePriority}
-                        onSelect={setSelectedTaskId}
+                        onSelect={handleSelectTask}
                         onMoveToToday={handleMoveToToday}
                         onBreakdown={handleBreakdown}
                         selectedTaskId={selectedTaskId}
@@ -829,7 +891,7 @@ export default function App() {
                         onToggle={handleToggleTask}
                         onDelete={handleDeleteTask}
                         onUpdatePriority={handleUpdatePriority}
-                        onSelect={setSelectedTaskId}
+                        onSelect={handleSelectTask}
                         onMoveToToday={handleMoveToToday}
                         onBreakdown={handleBreakdown}
                         selectedTaskId={selectedTaskId}
@@ -846,7 +908,7 @@ export default function App() {
                           onToggle={handleToggleTask}
                           onDelete={handleDeleteTask}
                           onUpdatePriority={handleUpdatePriority}
-                          onSelect={setSelectedTaskId}
+                          onSelect={handleSelectTask}
                           onMoveToToday={handleMoveToToday}
                           onBreakdown={handleBreakdown}
                           selectedTaskId={selectedTaskId}
@@ -876,7 +938,7 @@ export default function App() {
                       onToggle={handleToggleTask}
                       onDelete={handleDeleteTask}
                       onUpdatePriority={handleUpdatePriority}
-                      onSelect={setSelectedTaskId}
+                      onSelect={handleSelectTask}
                       onMoveToToday={handleMoveToToday}
                       onBreakdown={handleBreakdown}
                       selectedTaskId={selectedTaskId}
@@ -911,7 +973,7 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {!isPomodoroView && (
+      {!isPomodoroView && !isMobileLayout && (
         <ContextPanel 
           tasks={tasks} 
           selectedDate={selectedDate} 
@@ -919,6 +981,89 @@ export default function App() {
           onUpgrade={() => setIsProModalOpen(true)}
         />
       )}
+
+      <AnimatePresence>
+        {!isPomodoroView && isMobileLayout && isMobileNavOpen && (
+          <>
+            <motion.button
+              type="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileNavOpen(false)}
+              className="fixed inset-0 z-40 bg-[#173D35]/18 backdrop-blur-sm lg:hidden"
+              aria-label="Close navigation"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 240 }}
+              className="fixed inset-y-0 left-0 z-50 lg:hidden"
+            >
+              <div className="relative h-full">
+                <Sidebar 
+                  activeView={activeView}
+                  onViewChange={handleViewChange}
+                  counts={counts}
+                  onLogout={async () => {
+                    await authService.logout();
+                    setUser(null);
+                    setAuthMode('login');
+                    setAuthScreen('landing');
+                  }}
+                  tags={allTags}
+                  selectedTag={selectedTag}
+                  onTagSelect={(tag) => {
+                    setSelectedTag(tag);
+                    setIsMobileNavOpen(false);
+                  }}
+                  className="h-full w-[84vw] max-w-[320px] shadow-[0_24px_64px_rgba(23,61,53,0.18)]"
+                />
+                <button
+                  onClick={() => setIsMobileNavOpen(false)}
+                  className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-2xl border border-[#D7ECE2] bg-white/90 text-[#5E7B76] shadow-sm"
+                  aria-label="Close navigation"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {!isPomodoroView && isMobileLayout && isMobileContextOpen && (
+          <>
+            <motion.button
+              type="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileContextOpen(false)}
+              className="fixed inset-0 z-40 bg-[#173D35]/12 backdrop-blur-sm lg:hidden"
+              aria-label="Close insights"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 260 }}
+              className="fixed inset-x-0 bottom-0 z-50 lg:hidden"
+            >
+              <ContextPanel
+                tasks={tasks}
+                selectedDate={selectedDate}
+                selectedTask={selectedTask}
+                onUpgrade={() => setIsProModalOpen(true)}
+                onClose={() => setIsMobileContextOpen(false)}
+                className="h-[min(78vh,720px)] w-full rounded-t-[2rem] border-x-0 border-b-0 px-5 pb-8 pt-5 shadow-[0_-20px_60px_rgba(23,61,53,0.16)]"
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <ProModal 
         isOpen={isProModalOpen} 
@@ -940,9 +1085,7 @@ export default function App() {
             className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
           >
             <div className="bg-[#13B96D] text-white px-8 py-6 rounded-3xl shadow-2xl shadow-[#13B96D]/30 flex flex-col items-center gap-4 pointer-events-auto">
-              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-white" />
-              </div>
+              <BrandLogo className="h-16 w-16 rounded-2xl bg-white/88 p-3 shadow-sm" />
               <div className="text-center">
                 <h2 className="text-2xl font-serif italic mb-1">Welcome to Pro Mode</h2>
                 <p className="text-emerald-50 text-sm">Your digital brain just got an upgrade.</p>
