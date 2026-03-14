@@ -1,5 +1,5 @@
 import React from 'react';
-import logoSrc from '../../logo.png';
+import logoSrc from '../../logo main.PNG';
 
 interface BrandLogoProps {
   className?: string;

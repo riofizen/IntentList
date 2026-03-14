@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Task, User, ViewType, Priority } from './types';
 import { Sidebar } from './components/Sidebar';
 import { EntranceAnimatic } from './components/EntranceAnimatic';
@@ -25,6 +25,68 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 const FREE_TASK_LIMIT = 50;
+const POMODORO_DURATIONS = {
+  pomodoro: 25 * 60,
+  shortBreak: 5 * 60,
+  longBreak: 15 * 60,
+} as const;
+
+const getTaskCacheKey = (userId: string) => `intentlist_tasks_cache_${userId}`;
+
+const readTaskCache = (userId: string): Task[] => {
+  try {
+    const raw = localStorage.getItem(getTaskCacheKey(userId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed as Task[] : [];
+  } catch (error) {
+    console.error('Failed to read task cache:', error);
+    return [];
+  }
+};
+
+const writeTaskCache = (userId: string, tasks: Task[]) => {
+  try {
+    localStorage.setItem(getTaskCacheKey(userId), JSON.stringify(tasks));
+  } catch (error) {
+    console.error('Failed to write task cache:', error);
+  }
+};
+
+const mergeTaskCollections = (primary: Task[], fallback: Task[]) => {
+  const merged = new Map<string, Task>();
+
+  fallback.forEach((task) => merged.set(task.id, task));
+  primary.forEach((task) => merged.set(task.id, task));
+
+  return Array.from(merged.values()).sort((left, right) => {
+    const byDate = left.date.localeCompare(right.date);
+    if (byDate !== 0) return byDate;
+
+    const leftTime = left.time ?? '99:99';
+    const rightTime = right.time ?? '99:99';
+    const byTime = leftTime.localeCompare(rightTime);
+    if (byTime !== 0) return byTime;
+
+    return left.createdAt.localeCompare(right.createdAt);
+  });
+};
+
+const getTimerCompletionMessage = (mode: keyof typeof POMODORO_DURATIONS) => {
+  if (mode === 'pomodoro') {
+    return {
+      title: 'Focus session complete',
+      body: 'Time for a short break.',
+      nextMode: 'shortBreak' as const,
+    };
+  }
+
+  return {
+    title: `${mode === 'longBreak' ? 'Long break' : 'Short break'} complete`,
+    body: 'Break is over. Ready to focus again?',
+    nextMode: 'pomodoro' as const,
+  };
+};
 
 type AuthMode = 'login' | 'signup';
 
@@ -263,35 +325,135 @@ export default function App() {
   // Pomodoro Global State (Persisted)
   const [pomodoroMode, setPomodoroMode] = useLocalStorage<'pomodoro' | 'shortBreak' | 'longBreak'>('pomodoro_mode', 'pomodoro');
   const [pomodoroTimeLeft, setPomodoroTimeLeft] = useLocalStorage<number>('pomodoro_time', 25 * 60);
-  const [pomodoroIsActive, setPomodoroIsActive] = useState(false); // Don't persist active state for safety
+  const [pomodoroIsActive, setPomodoroIsActive] = useLocalStorage<boolean>('pomodoro_active', false);
   const [pomodoroIsMuted, setPomodoroIsMuted] = useLocalStorage<boolean>('pomodoro_muted', false);
+  const [pomodoroEndAt, setPomodoroEndAt] = useLocalStorage<number | null>('pomodoro_end_at', null);
+  const [pomodoroNotificationsEnabled, setPomodoroNotificationsEnabled] = useLocalStorage<boolean>('pomodoro_notifications', true);
+  const [pomodoroKeepAwake, setPomodoroKeepAwake] = useLocalStorage<boolean>('pomodoro_keep_awake', true);
   const [isMobileLayout, setIsMobileLayout] = useState(() => window.innerWidth < 1024);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isMobileContextOpen, setIsMobileContextOpen] = useState(false);
+  const [hasHydratedTasks, setHasHydratedTasks] = useState(false);
+  const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
+  const timerCompletionRef = useRef<string | null>(null);
+
+  const notifyPomodoroCompletion = useCallback((mode: keyof typeof POMODORO_DURATIONS) => {
+    if (!pomodoroNotificationsEnabled || typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    const { title, body } = getTimerCompletionMessage(mode);
+    new Notification(title, {
+      body,
+      icon: '/logo.png',
+      badge: '/logo.png',
+      tag: 'intentlist-pomodoro',
+    });
+  }, [pomodoroNotificationsEnabled]);
+
+  const completePomodoroTimer = useCallback((mode: keyof typeof POMODORO_DURATIONS) => {
+    const completionKey = `${mode}-${pomodoroEndAt ?? Date.now()}`;
+    if (timerCompletionRef.current === completionKey) return;
+    timerCompletionRef.current = completionKey;
+
+    setPomodoroIsActive(false);
+    setPomodoroEndAt(null);
+
+    if (!pomodoroIsMuted) {
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      audio.play().catch(() => {});
+    }
+
+    notifyPomodoroCompletion(mode);
+
+    const { nextMode } = getTimerCompletionMessage(mode);
+    setPomodoroMode(nextMode);
+    setPomodoroTimeLeft(POMODORO_DURATIONS[nextMode]);
+  }, [notifyPomodoroCompletion, pomodoroEndAt, pomodoroIsMuted, setPomodoroEndAt, setPomodoroIsActive, setPomodoroMode, setPomodoroTimeLeft]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (pomodoroIsActive && pomodoroTimeLeft > 0) {
-      interval = setInterval(() => {
-        setPomodoroTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (pomodoroTimeLeft === 0 && pomodoroIsActive) {
-      setPomodoroIsActive(false);
-      if (!pomodoroIsMuted) {
-        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-        audio.play().catch(() => {});
-      }
-      // Auto switch
-      if (pomodoroMode === 'pomodoro') {
-        setPomodoroMode('shortBreak');
-        setPomodoroTimeLeft(5 * 60);
-      } else {
-        setPomodoroMode('pomodoro');
-        setPomodoroTimeLeft(25 * 60);
-      }
+    if (!pomodoroIsActive) return;
+
+    if (pomodoroEndAt === null) {
+      setPomodoroEndAt(Date.now() + pomodoroTimeLeft * 1000);
+      return;
     }
-    return () => { if (interval) clearInterval(interval); };
-  }, [pomodoroIsActive, pomodoroTimeLeft, pomodoroMode, pomodoroIsMuted]);
+
+    const syncCountdown = () => {
+      const remaining = Math.max(0, Math.ceil((pomodoroEndAt - Date.now()) / 1000));
+      setPomodoroTimeLeft((prev) => prev === remaining ? prev : remaining);
+
+      if (remaining === 0) {
+        completePomodoroTimer(pomodoroMode);
+      }
+    };
+
+    syncCountdown();
+
+    const interval = setInterval(syncCountdown, 1000);
+    const syncOnWake = () => syncCountdown();
+
+    document.addEventListener('visibilitychange', syncOnWake);
+    window.addEventListener('focus', syncOnWake);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', syncOnWake);
+      window.removeEventListener('focus', syncOnWake);
+    };
+  }, [completePomodoroTimer, pomodoroEndAt, pomodoroIsActive, pomodoroMode, pomodoroTimeLeft, setPomodoroEndAt, setPomodoroTimeLeft]);
+
+  const releaseWakeLock = useCallback(async () => {
+    if (!wakeLockRef.current) return;
+
+    try {
+      await wakeLockRef.current.release();
+    } catch (error) {
+      console.error('Failed to release wake lock:', error);
+    } finally {
+      wakeLockRef.current = null;
+    }
+  }, []);
+
+  const requestWakeLock = useCallback(async () => {
+    if (!pomodoroKeepAwake || !pomodoroIsActive || typeof navigator === 'undefined' || document.visibilityState !== 'visible') {
+      return;
+    }
+
+    const wakeLockApi = (navigator as Navigator & {
+      wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> };
+    }).wakeLock;
+
+    if (!wakeLockApi || wakeLockRef.current) return;
+
+    try {
+      wakeLockRef.current = await wakeLockApi.request('screen');
+    } catch (error) {
+      console.error('Failed to acquire wake lock:', error);
+      wakeLockRef.current = null;
+    }
+  }, [pomodoroIsActive, pomodoroKeepAwake]);
+
+  useEffect(() => {
+    if (pomodoroIsActive && pomodoroKeepAwake) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && pomodoroIsActive && pomodoroKeepAwake) {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (!pomodoroIsActive) {
+        releaseWakeLock();
+      }
+    };
+  }, [pomodoroIsActive, pomodoroKeepAwake, releaseWakeLock, requestWakeLock]);
 
   useEffect(() => {
     const handleResize = () => setIsMobileLayout(window.innerWidth < 1024);
@@ -303,9 +465,12 @@ export default function App() {
   useEffect(() => {
     if (user) {
       localStorage.setItem('intentlist_user', JSON.stringify(user));
+      setHasHydratedTasks(false);
       loadTasks();
     } else {
       localStorage.removeItem('intentlist_user');
+      setTasks([]);
+      setHasHydratedTasks(false);
     }
   }, [user]);
 
@@ -334,9 +499,23 @@ export default function App() {
 
   const loadTasks = async () => {
     if (!user) return;
-    const data = await taskService.getTasks(user.id);
-    setTasks(data);
+
+    const cachedTasks = readTaskCache(user.id);
+    setTasks(cachedTasks);
+    setHasHydratedTasks(true);
+
+    try {
+      const data = await taskService.getTasks(user.id);
+      setTasks(mergeTaskCollections(data, cachedTasks));
+    } catch (error) {
+      console.error('Failed to load tasks, using local cache:', error);
+    }
   };
+
+  useEffect(() => {
+    if (!user || !hasHydratedTasks) return;
+    writeTaskCache(user.id, tasks);
+  }, [hasHydratedTasks, tasks, user]);
 
   const handleAddTask = async (parsed: ParsedIntent) => {
     if (!user) return;
@@ -924,10 +1103,16 @@ export default function App() {
                       setMode={setPomodoroMode}
                       timeLeft={pomodoroTimeLeft}
                       setTimeLeft={setPomodoroTimeLeft}
+                      endAt={pomodoroEndAt}
+                      setEndAt={setPomodoroEndAt}
                       isActive={pomodoroIsActive}
                       setIsActive={setPomodoroIsActive}
                       isMuted={pomodoroIsMuted}
                       setIsMuted={setPomodoroIsMuted}
+                      notificationsEnabled={pomodoroNotificationsEnabled}
+                      setNotificationsEnabled={setPomodoroNotificationsEnabled}
+                      keepAwake={pomodoroKeepAwake}
+                      setKeepAwake={setPomodoroKeepAwake}
                       isZenMode={isZenMode}
                       setIsZenMode={setIsZenMode}
                     />

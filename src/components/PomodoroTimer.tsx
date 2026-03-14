@@ -36,10 +36,16 @@ interface PomodoroTimerProps {
   setMode: (mode: TimerMode) => void;
   timeLeft: number;
   setTimeLeft: (time: number) => void;
+  endAt: number | null;
+  setEndAt: (value: number | null) => void;
   isActive: boolean;
   setIsActive: (active: boolean) => void;
   isMuted: boolean;
   setIsMuted: (muted: boolean) => void;
+  notificationsEnabled: boolean;
+  setNotificationsEnabled: (enabled: boolean) => void;
+  keepAwake: boolean;
+  setKeepAwake: (enabled: boolean) => void;
   isZenMode: boolean;
   setIsZenMode: (zen: boolean) => void;
 }
@@ -172,10 +178,16 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
   setMode,
   timeLeft,
   setTimeLeft,
+  endAt,
+  setEndAt,
   isActive,
   setIsActive,
   isMuted,
   setIsMuted,
+  notificationsEnabled,
+  setNotificationsEnabled,
+  keepAwake,
+  setKeepAwake,
   isZenMode,
   setIsZenMode,
 }) => {
@@ -202,6 +214,10 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
 
   const totalTime = MODES[mode].duration;
   const timerProgress = Math.min(100, Math.max(0, ((totalTime - timeLeft) / totalTime) * 100));
+  const completionLabel = useMemo(
+    () => (endAt ? new Date(endAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : null),
+    [endAt],
+  );
   const dayLabel = useMemo(
     () => new Date().toLocaleDateString(undefined, { weekday: "long" }),
     [],
@@ -338,11 +354,27 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
     setMode(newMode);
     setTimeLeft(MODES[newMode].duration);
     setIsActive(false);
+    setEndAt(null);
     trackAction("mode_switch", newMode, `Switched from ${MODES[mode].label}`);
   };
 
-  const toggleTimer = () => {
+  const toggleTimer = async () => {
     const next = !isActive;
+
+    if (next) {
+      if (notificationsEnabled && typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          setNotificationsEnabled(false);
+        }
+      }
+      setEndAt(Date.now() + timeLeft * 1000);
+    } else if (endAt !== null) {
+      const remaining = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      setEndAt(null);
+    }
+
     setIsActive(next);
     trackAction(next ? "start" : "pause", mode);
   };
@@ -350,7 +382,35 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
   const resetTimer = () => {
     setIsActive(false);
     setTimeLeft(MODES[mode].duration);
+    setEndAt(null);
     trackAction("reset", mode);
+  };
+
+  const toggleNotifications = async () => {
+    const next = !notificationsEnabled;
+
+    if (!next) {
+      setNotificationsEnabled(false);
+      return;
+    }
+
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setNotificationsEnabled(false);
+      return;
+    }
+
+    if (Notification.permission === "granted") {
+      setNotificationsEnabled(true);
+      return;
+    }
+
+    if (Notification.permission === "default") {
+      const permission = await Notification.requestPermission();
+      setNotificationsEnabled(permission === "granted");
+      return;
+    }
+
+    setNotificationsEnabled(false);
   };
 
   const segmentCount = 4;
@@ -545,6 +605,12 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
             "{insight}"
           </p>
 
+          <p className="text-[11px] font-mono uppercase tracking-[0.24em] text-[#6B8D86]">
+            {isActive && completionLabel
+              ? `Ends around ${completionLabel} · background-safe session tracking`
+              : "Session state stays recoverable across tab switches and refreshes"}
+          </p>
+
           {mode !== "pomodoro" && isActive && (
             <div className={cn("rounded-3xl border border-[#CFE6DB] bg-white/70 p-6 backdrop-blur-md", isCompactLayout ? "mt-3" : "mt-5")}>
               <MindfulBreathing isZenMode />
@@ -592,7 +658,7 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
             <button
               onClick={() => setIsMuted(!isMuted)}
               className={toolButtonClass}
-              aria-label={isMuted ? "Unmute timer" : "Mute timer"}
+              aria-label={isMuted ? "Unmute timer sound" : "Mute timer sound"}
             >
               {isMuted ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
             </button>
@@ -720,6 +786,44 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <button
+                onClick={toggleNotifications}
+                className={cn(surfaceClass, "p-4 text-left transition hover:border-[#13B96D]/60 hover:bg-white/90")}
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold text-[#1D3441]">
+                  {notificationsEnabled ? <Bell className="h-4 w-4 text-[#13B96D]" /> : <BellOff className="h-4 w-4 text-[#6B8D86]" />}
+                  Browser Alerts
+                </div>
+                <p className="mt-2 text-xs text-[#5F7D78]">
+                  {notificationsEnabled ? 'Enabled for timer completion.' : 'Enable notifications when the session ends.'}
+                </p>
+              </button>
+
+              <button
+                onClick={() => setKeepAwake(!keepAwake)}
+                className={cn(surfaceClass, "p-4 text-left transition hover:border-[#13B96D]/60 hover:bg-white/90")}
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold text-[#1D3441]">
+                  {keepAwake ? <Maximize2 className="h-4 w-4 text-[#13B96D]" /> : <Minimize2 className="h-4 w-4 text-[#6B8D86]" />}
+                  Keep Screen Awake
+                </div>
+                <p className="mt-2 text-xs text-[#5F7D78]">
+                  {keepAwake ? 'Prevents sleep when the browser supports wake lock.' : 'Allow the device to sleep normally.'}
+                </p>
+              </button>
+
+              <div className={cn(surfaceClass, "p-4")}>
+                <div className="flex items-center gap-2 text-sm font-semibold text-[#1D3441]">
+                  <Target className="h-4 w-4 text-[#13B96D]" />
+                  Session Safeguard
+                </div>
+                <p className="mt-2 text-xs text-[#5F7D78]">
+                  Countdown resumes from a saved end time even after app switches, refreshes, or screen locks.
+                </p>
               </div>
             </div>
 
