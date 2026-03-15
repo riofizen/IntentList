@@ -1,5 +1,11 @@
 export type Priority = 'high' | 'normal' | 'low';
 
+export interface RecurrenceRule {
+  type: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval: number;
+  daysOfWeek?: number[];
+}
+
 export interface Task {
   id: string;
   userId: string;
@@ -10,6 +16,10 @@ export interface Task {
   priority: Priority;
   tags: string[];
   createdAt: string;
+  // New optional fields — stored in local state/cache, persisted to DB once columns are added
+  parentId?: string | null;
+  recurrence?: RecurrenceRule | null;
+  duration?: number | null;
 }
 
 export interface User {
@@ -18,4 +28,14 @@ export interface User {
   plan: 'free' | 'pro';
 }
 
-export type ViewType = 'today' | 'overdue' | 'upcoming' | 'all' | 'calendar' | 'timeline' | 'pomodoro';
+export type ViewType =
+  | 'today'
+  | 'overdue'
+  | 'upcoming'
+  | 'all'
+  | 'calendar'
+  | 'timeline'
+  | 'pomodoro'
+  | 'digest'
+  | 'weekly'
+  | 'templates';

@@ -1,0 +1,16 @@
+{
+  "name": "IntentList",
+  "short_name": "IntentList",
+  "description": "Your digital brain — capture, organise, and focus.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EDF8F2",
+  "theme_color": "#13B96D",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "en"
+}

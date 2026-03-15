@@ -9,10 +9,7 @@ const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 const supabase = SUPABASE_ENABLED
   ? createClient(SUPABASE_URL as string, SUPABASE_ANON_KEY as string, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
+      auth: { persistSession: true, autoRefreshToken: true },
     })
   : null;
 
@@ -26,6 +23,10 @@ type SupabaseTaskRow = {
   priority: "high" | "normal" | "low";
   tags: unknown;
   created_at: string;
+  // Optional extended columns — present once DB migration is run
+  parent_id?: string | null;
+  recurrence?: unknown;
+  duration?: number | null;
 };
 
 const toPlan = (value: unknown): User["plan"] => (value === "pro" ? "pro" : "free");
@@ -44,10 +45,21 @@ const toTask = (row: SupabaseTaskRow): Task => ({
   time: row.time,
   completed: Boolean(row.completed),
   priority: row.priority ?? "normal",
-  tags: Array.isArray(row.tags) ? row.tags.filter((tag): tag is string => typeof tag === "string") : [],
+  tags: Array.isArray(row.tags)
+    ? row.tags.filter((tag): tag is string => typeof tag === "string")
+    : [],
   createdAt: row.created_at,
+  // Extended fields — gracefully default when columns don't exist yet
+  parentId: row.parent_id ?? null,
+  recurrence: (row.recurrence as Task["recurrence"]) ?? null,
+  duration: row.duration ?? null,
 });
 
+// Only send fields that exist in the current DB schema.
+// parentId / recurrence / duration are NOT sent until you add the columns:
+//   ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS parent_id text null;
+//   ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS recurrence jsonb null;
+//   ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS duration integer null;
 const toSupabaseTaskInsert = (task: Task) => ({
   id: task.id,
   user_id: task.userId,
@@ -138,9 +150,7 @@ export const taskService = {
       return;
     }
 
-    const res = await fetch(`${API_BASE}/tasks/${id}`, {
-      method: "DELETE",
-    });
+    const res = await fetch(`${API_BASE}/tasks/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Failed to delete task");
   },
 };
@@ -155,7 +165,7 @@ export const authService = {
 
     try {
       const raw = localStorage.getItem("intentlist_user");
-      return raw ? JSON.parse(raw) as User : null;
+      return raw ? (JSON.parse(raw) as User) : null;
     } catch (error) {
       console.error("Failed to restore local auth user:", error);
       return null;
@@ -164,11 +174,9 @@ export const authService = {
 
   onAuthStateChange(callback: (user: User | null) => void): () => void {
     if (!supabase) return () => {};
-
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       callback(session?.user ? toUser(session.user) : null);
     });
-
     return () => data.subscription.unsubscribe();
   },
 
@@ -200,11 +208,9 @@ export const authService = {
       if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
         throw new Error("Account already exists. Sign in instead.");
       }
-
       if (!data.session) {
         throw new Error("Account created. Check your email to confirm it, then sign in.");
       }
-
       return toUser(data.user);
     }
 
@@ -218,8 +224,6 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
+    if (supabase) await supabase.auth.signOut();
   },
 };
