@@ -74,6 +74,7 @@ const toSupabaseTaskUpdate = (updates: Partial<Task>) => {
 const toAuthError = (message: string, fallback: string) => {
   const normalized = message.toLowerCase();
   if (normalized.includes("invalid login credentials")) return "Invalid email or password";
+  if (normalized.includes("email not confirmed")) return "Check your email and confirm your account before signing in";
   if (normalized.includes("already") || normalized.includes("registered")) return "User already exists";
   return message || fallback;
 };
@@ -145,6 +146,32 @@ export const taskService = {
 };
 
 export const authService = {
+  async getCurrentUser(): Promise<User | null> {
+    if (supabase) {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) return null;
+      return toUser(data.user);
+    }
+
+    try {
+      const raw = localStorage.getItem("intentlist_user");
+      return raw ? JSON.parse(raw) as User : null;
+    } catch (error) {
+      console.error("Failed to restore local auth user:", error);
+      return null;
+    }
+  },
+
+  onAuthStateChange(callback: (user: User | null) => void): () => void {
+    if (!supabase) return () => {};
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      callback(session?.user ? toUser(session.user) : null);
+    });
+
+    return () => data.subscription.unsubscribe();
+  },
+
   async login(email: string, password: string): Promise<User> {
     if (supabase) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -170,13 +197,12 @@ export const authService = {
       });
 
       if (error || !data.user) throw new Error(toAuthError(error?.message ?? "", "Signup failed"));
+      if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        throw new Error("Account already exists. Sign in instead.");
+      }
 
       if (!data.session) {
-        const signIn = await supabase.auth.signInWithPassword({ email, password });
-        if (signIn.error || !signIn.data.user) {
-          throw new Error("Account created. Verify your email first, then sign in.");
-        }
-        return toUser(signIn.data.user);
+        throw new Error("Account created. Check your email to confirm it, then sign in.");
       }
 
       return toUser(data.user);

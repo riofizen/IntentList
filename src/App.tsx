@@ -337,6 +337,29 @@ export default function App() {
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const timerCompletionRef = useRef<string | null>(null);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    authService.getCurrentUser()
+      .then((currentUser) => {
+        if (isMounted) {
+          setUser(currentUser);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to restore auth session:', error);
+      });
+
+    const unsubscribe = authService.onAuthStateChange((nextUser) => {
+      setUser(nextUser);
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
   const notifyPomodoroCompletion = useCallback((mode: keyof typeof POMODORO_DURATIONS) => {
     if (!pomodoroNotificationsEnabled || typeof window === 'undefined' || !('Notification' in window)) return;
     if (Notification.permission !== 'granted') return;
@@ -853,7 +876,7 @@ export default function App() {
       >
         <div className={cn(
           "max-w-4xl w-full mx-auto px-4 pt-6 pb-6 flex-1 flex flex-col overflow-hidden transition-all duration-700 sm:px-6 sm:pt-8 lg:px-8 lg:pt-16 lg:pb-8", 
-          isPomodoroView && "max-w-full px-0 pt-0 pb-0",
+          isPomodoroView && "max-w-full px-0 pt-0 pb-0 overflow-visible",
           isDeepWorkMode && "max-w-2xl pt-32",
           isZenMode && "max-w-full px-0 pt-0"
         )}>

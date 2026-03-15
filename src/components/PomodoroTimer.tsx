@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft,
@@ -415,6 +415,8 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
 
   const segmentCount = 4;
   const activeSegments = Math.max(1, Math.ceil(timerProgress / (100 / segmentCount)));
+  const showBreathingPanel = mode !== "pomodoro" && isActive;
+  const usesRelaxedLayout = showBreathingPanel || isCompactLayout;
   const panelClass = "rounded-2xl border border-[#CBE5D8] bg-white/72 backdrop-blur-xl";
   const surfaceClass = "rounded-2xl border border-[#CFE6DB] bg-[#F3FBF7]/85 backdrop-blur-xl";
   const toolButtonClass =
@@ -423,7 +425,7 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
   return (
     <div
       className={cn(
-        "pomodoro-gradient relative h-[100dvh] w-full overflow-hidden text-[#1D3441] md:rounded-[2rem]",
+        "pomodoro-gradient relative min-h-[100dvh] w-full overflow-x-hidden text-[#1D3441] md:rounded-[2rem]",
         isZenMode && "saturate-125",
       )}
     >
@@ -446,7 +448,7 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
 
       <div
         className={cn(
-          "relative z-10 flex h-full flex-col px-4 pb-4 pt-5 md:px-8 md:pt-6",
+          "relative z-10 flex min-h-full flex-col px-4 pb-5 pt-5 md:px-8 md:pt-6",
           isCompactLayout ? "gap-3" : "gap-4 md:gap-5",
         )}
       >
@@ -511,7 +513,8 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
 
         <div
           className={cn(
-            "flex flex-1 flex-col items-center justify-center pb-24 text-center md:pb-20",
+            "flex flex-1 flex-col items-center text-center",
+            usesRelaxedLayout ? "justify-start pb-6 pt-2 md:pb-8" : "justify-center pb-10 md:pb-8",
             isCompactLayout ? "gap-2" : "gap-3",
           )}
         >
@@ -607,11 +610,11 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
 
           <p className="text-[11px] font-mono uppercase tracking-[0.24em] text-[#6B8D86]">
             {isActive && completionLabel
-              ? `Ends around ${completionLabel} · background-safe session tracking`
+              ? `Ends around ${completionLabel} - background-safe session tracking`
               : "Session state stays recoverable across tab switches and refreshes"}
           </p>
 
-          {mode !== "pomodoro" && isActive && (
+          {showBreathingPanel && (
             <div className={cn("rounded-3xl border border-[#CFE6DB] bg-white/70 p-6 backdrop-blur-md", isCompactLayout ? "mt-3" : "mt-5")}>
               <MindfulBreathing isZenMode />
             </div>
@@ -620,8 +623,8 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
 
         <div
           className={cn(
-            "absolute inset-x-4 bottom-3 z-10 flex flex-col gap-2 md:inset-x-8 md:flex-row md:items-end md:justify-between",
-            isCompactLayout ? "bottom-2" : "bottom-3",
+            "mt-auto flex flex-col gap-2 pb-1 pt-2 md:flex-row md:items-end md:justify-between",
+            showBreathingPanel && "pt-4",
           )}
         >
           <div className="flex items-center gap-2 rounded-2xl border border-[#C7E3D5] bg-white/78 p-2 shadow-xl shadow-[#2A5B4A]/15 backdrop-blur-xl">
@@ -878,3 +881,4 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
     </div>
   );
 };
+
