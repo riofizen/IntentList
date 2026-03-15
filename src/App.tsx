@@ -24,7 +24,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Undo2, AlertCircle, ChevronRight, ChevronLeft, Sparkles,
-  X, Clock3, ShieldCheck, CheckCircle2, Menu,
+  X, Clock3, ShieldCheck, CheckCircle2, Menu, Moon, Sun, Command,
+  Timer, BarChart3, Calendar as CalendarIcon, LayoutTemplate, Wand2,
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -171,108 +172,372 @@ const Auth: React.FC<{ onLogin: (user: User) => void; initialMode: AuthMode; onB
 
 // ─── Landing Page ─────────────────────────────────────────────────────────────
 
+// ─── Typed Demo ───────────────────────────────────────────────────────────────
+const DEMO_PHRASES = [
+  'team meeting tomorrow 10am @work',
+  'buy groceries this evening @errands',
+  'finish report by friday high priority',
+  'call mom on sunday afternoon',
+  'gym every monday 7am #health',
+];
+
+const TypedDemo: React.FC = () => {
+  const [phraseIdx, setPhraseIdx] = useState(0);
+  const [text, setText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  useEffect(() => {
+    const phrase = DEMO_PHRASES[phraseIdx];
+    let timeout: ReturnType<typeof setTimeout>;
+    if (!deleting && text.length < phrase.length) {
+      timeout = setTimeout(() => setText(phrase.slice(0, text.length + 1)), 55);
+    } else if (!deleting && text.length === phrase.length) {
+      timeout = setTimeout(() => setDeleting(true), 1800);
+    } else if (deleting && text.length > 0) {
+      timeout = setTimeout(() => setText(text.slice(0, -1)), 28);
+    } else if (deleting && text.length === 0) {
+      setDeleting(false);
+      setPhraseIdx(i => (i + 1) % DEMO_PHRASES.length);
+    }
+    return () => clearTimeout(timeout);
+  }, [text, deleting, phraseIdx]);
+
+  const highlight = (t: string) => {
+    return t.split(/(\s)/).map((w, i) => {
+      if (w.startsWith('@') || w.startsWith('#')) return <span key={i} style={{ color: '#13B96D' }}>{w}</span>;
+      if (/\b(tomorrow|today|monday|friday|sunday|evening|morning|afternoon)\b/i.test(w)) return <span key={i} style={{ color: '#5FD4A0' }}>{w}</span>;
+      if (/\b(high priority|urgent)\b/i.test(w)) return <span key={i} style={{ color: '#F87171' }}>{w}</span>;
+      if (/\b(10am|7am)\b/i.test(w)) return <span key={i} style={{ color: '#A78BFA' }}>{w}</span>;
+      return <span key={i}>{w}</span>;
+    });
+  };
+
+  return (
+    <div className="flex items-center gap-3 px-5 py-4 rounded-2xl border"
+      style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)' }}>
+      <div className="w-2 h-2 rounded-full flex-shrink-0 animate-pulse" style={{ background: '#13B96D' }} />
+      <span className="font-mono text-sm sm:text-base" style={{ color: '#E2F4EC', minHeight: '1.5em' }}>
+        {highlight(text)}
+        <span className="animate-pulse" style={{ color: '#13B96D' }}>|</span>
+      </span>
+    </div>
+  );
+};
+
+// ─── Parsed Result Card ───────────────────────────────────────────────────────
+const ParsedCard: React.FC<{ emoji: string; label: string; value: string; color: string }> = ({ emoji, label, value, color }) => (
+  <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border"
+    style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.08)' }}>
+    <span className="text-base">{emoji}</span>
+    <div>
+      <p className="text-[9px] font-bold uppercase tracking-[0.28em]" style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</p>
+      <p className="text-sm font-semibold" style={{ color }}>{value}</p>
+    </div>
+  </div>
+);
+
+// ─── Feature Card ─────────────────────────────────────────────────────────────
+const FeatureCard: React.FC<{
+  icon: React.ReactNode; title: string; desc: string; tag: string; delay?: number;
+}> = ({ icon, title, desc, tag, delay = 0 }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 24 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, margin: '-60px' }}
+    transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
+    className="group relative p-7 rounded-3xl border overflow-hidden"
+    style={{ background: 'rgba(255,255,255,0.55)', borderColor: '#D4EAE0' }}
+  >
+    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+      style={{ background: 'radial-gradient(circle at 30% 30%, rgba(19,185,109,0.06), transparent 60%)' }} />
+    <div className="relative">
+      <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-[0.28em] mb-5"
+        style={{ background: 'rgba(19,185,109,0.1)', color: '#0D8A4E' }}>
+        {tag}
+      </div>
+      <div className="mb-4 text-[#13B96D]">{icon}</div>
+      <h3 className="text-xl font-bold tracking-tight mb-2" style={{ fontFamily: "'Manrope', sans-serif", color: '#1A3240' }}>{title}</h3>
+      <p className="text-sm leading-relaxed" style={{ color: '#4A7568' }}>{desc}</p>
+    </div>
+  </motion.div>
+);
+
+// ─── Landing Page ─────────────────────────────────────────────────────────────
 const LandingPage: React.FC<{ onLogin: () => void; onSignup: () => void }> = ({ onLogin, onSignup }) => (
-  <div className="min-h-screen relative overflow-hidden bg-[#EEF7F2] text-[#1E2F3A]">
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(76,185,136,0.16),transparent_45%),radial-gradient(circle_at_80%_85%,rgba(112,188,165,0.14),transparent_42%)]" />
-    <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(24,45,40,0.12)_1px,transparent_1px)] [background-size:14px_14px]" />
+  <div className="min-h-screen overflow-x-hidden" style={{ background: '#EDF8F2' }}>
 
-    {Array.from({ length: 3 }).map((_, i) => (
-      <motion.div
-        key={`shoot-${i}`}
-        className="absolute left-[-180px] h-[1px] w-36 rotate-[-16deg] bg-gradient-to-r from-transparent via-[#1BB46B]/80 to-transparent"
-        style={{ top: `${16 + i * 18}%` }}
-        initial={{ x: -160, opacity: 0 }}
-        animate={{ x: 1250, opacity: [0, 0.9, 0] }}
-        transition={{ duration: 6.5 + i * 1.4, repeat: Infinity, ease: 'linear', delay: i * 1.3 }}
-      />
-    ))}
+    {/* ══════════════════════════════════════════
+        HERO — dark, full viewport, cinematic
+    ══════════════════════════════════════════ */}
+    <section className="relative min-h-screen flex flex-col overflow-hidden"
+      style={{ background: 'linear-gradient(160deg, #060F0B 0%, #0B1E14 55%, #0E2418 100%)' }}>
 
-    <motion.div
-      className="absolute -left-28 top-24 h-[320px] w-[320px] rounded-full bg-[#85E2BA]/20 blur-[88px]"
-      animate={{ x: [0, 18, -10, 0], y: [0, 16, -6, 0] }}
-      transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-    />
-    <motion.div
-      className="absolute right-[-80px] bottom-0 h-[360px] w-[360px] rounded-full bg-[#B5E8D2]/35 blur-[95px]"
-      animate={{ x: [0, -18, 8, 0], y: [0, 12, -12, 0] }}
-      transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-    />
+      {/* Grid texture */}
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px)', backgroundSize: '48px 48px' }} />
 
-    <div className="relative z-10 min-h-screen px-6 py-6 md:px-10 md:py-8 flex flex-col">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <BrandLogo className="h-10 w-10 rounded-2xl border border-[#CFE6DA] bg-white/85 p-1.5 shadow-sm" alt="IntentList logo" />
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Focus Orbit</h1>
+      {/* Orbs */}
+      <motion.div className="absolute rounded-full blur-[120px] pointer-events-none"
+        style={{ width: 600, height: 600, top: '-15%', left: '-10%', background: 'rgba(19,185,109,0.09)' }}
+        animate={{ x: [0, 30, -15, 0], y: [0, 20, 8, 0] }}
+        transition={{ duration: 28, repeat: Infinity, ease: 'easeInOut' }} />
+      <motion.div className="absolute rounded-full blur-[100px] pointer-events-none"
+        style={{ width: 500, height: 500, bottom: '-10%', right: '-8%', background: 'rgba(95,212,160,0.07)' }}
+        animate={{ x: [0, -25, 12, 0], y: [0, 15, -18, 0] }}
+        transition={{ duration: 32, repeat: Infinity, ease: 'easeInOut' }} />
+      <motion.div className="absolute rounded-full blur-[80px] pointer-events-none"
+        style={{ width: 300, height: 300, top: '40%', left: '50%', background: 'rgba(19,185,109,0.05)' }}
+        animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }} />
+
+      {/* Shooting lines */}
+      {[0, 1, 2].map(i => (
+        <motion.div key={i}
+          className="absolute h-px w-32 pointer-events-none"
+          style={{ top: `${22 + i * 20}%`, left: -140, background: 'linear-gradient(90deg, transparent, rgba(19,185,109,0.7), transparent)', transform: 'rotate(-12deg)' }}
+          animate={{ x: [0, 1600], opacity: [0, 1, 0] }}
+          transition={{ duration: 7 + i * 1.5, repeat: Infinity, ease: 'linear', delay: i * 2.2 }} />
+      ))}
+
+      {/* Nav */}
+      <nav className="relative z-10 flex items-center justify-between px-6 py-5 md:px-10 md:py-6">
+        <div className="flex items-center gap-3">
+          <BrandLogo className="h-10 w-10 rounded-2xl p-2 flex-shrink-0"
+            style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.07)' }} alt="IntentList" />
+          <span className="text-xl font-black tracking-[-0.02em]" style={{ color: '#E2F4EC' }}>IntentList</span>
         </div>
-        <div className="hidden md:flex items-center gap-10 text-sm text-[#1E2F3A]/75">
-          <button className="hover:text-[#1E2F3A] transition-colors">Experience</button>
-          <button className="hover:text-[#1E2F3A] transition-colors">Manifesto</button>
+        <div className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>
+          {['Features', 'How it works', 'Pricing'].map(l => (
+            <button key={l} className="hover:text-white transition-colors duration-200">{l}</button>
+          ))}
         </div>
-        <button
-          onClick={onLogin}
-          className="px-5 py-2.5 rounded-full bg-[#13B96D]/15 border border-[#13B96D]/35 text-[#139C5E] text-sm font-semibold hover:bg-[#13B96D]/25 transition-colors"
-        >
+        <button onClick={onLogin}
+          className="px-5 py-2.5 rounded-full border text-sm font-semibold transition-all duration-300 hover:border-[#13B96D]/60"
+          style={{ background: 'rgba(255,255,255,0.07)', borderColor: 'rgba(255,255,255,0.12)', color: '#9FD4BC' }}>
           Sign In
         </button>
-      </header>
+      </nav>
 
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4">
-        <motion.h2
+      {/* Hero content */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 pb-16 pt-8 text-center">
+
+        {/* Eyebrow */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border mb-8"
+          style={{ background: 'rgba(19,185,109,0.1)', borderColor: 'rgba(19,185,109,0.3)' }}>
+          <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#13B96D' }} />
+          <span className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: '#5FD4A0' }}>Now in alpha</span>
+        </motion.div>
+
+        {/* Headline */}
+        <motion.h1
           initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          className="text-[clamp(3.2rem,9vw,7rem)] font-serif italic tracking-tight leading-[0.95] text-[#16253A]"
-        >
-          Focus Orbit
-        </motion.h2>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
-          className="mt-3 text-lg text-[#4F6873]"
-        >
-          Your daily life, beautifully in focus.
+          transition={{ duration: 0.9, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          className="font-serif italic leading-[0.92] tracking-tight"
+          style={{ fontSize: 'clamp(3rem, 9vw, 6.5rem)', color: '#E8F5EE' }}>
+          Think it.<br />
+          <span style={{ color: '#13B96D' }}>Capture it.</span><br />
+          Do it.
+        </motion.h1>
+
+        <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="mt-6 text-base sm:text-lg max-w-xl leading-relaxed"
+          style={{ color: 'rgba(255,255,255,0.5)' }}>
+          IntentList turns your messy brain dumps into structured tasks — with smart date parsing, focus timers, and weekly reviews built in.
         </motion.p>
-        <motion.div
-          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.32, duration: 0.8 }}
-          className="mt-10 flex flex-wrap justify-center gap-3"
-        >
-          <button
-            onClick={onSignup}
-            className="px-10 py-3.5 rounded-full bg-[#13B96D] text-white font-semibold shadow-[0_10px_28px_rgba(19,185,109,0.35)] hover:bg-[#0FAA64] transition-all"
-          >
-            Start Session
+
+        {/* CTAs */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.45 }}
+          className="mt-10 flex flex-wrap items-center justify-center gap-3">
+          <button onClick={onSignup}
+            className="px-8 py-3.5 rounded-full text-sm font-bold transition-all duration-300 active:scale-95"
+            style={{ background: '#13B96D', color: '#fff', boxShadow: '0 0 40px rgba(19,185,109,0.45)' }}
+            onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 0 60px rgba(19,185,109,0.6)')}
+            onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 40px rgba(19,185,109,0.45)')}>
+            Start for free →
           </button>
-          <button
-            onClick={onLogin}
-            className="px-8 py-3.5 rounded-full border border-[#13B96D]/40 text-[#139C5E] font-semibold hover:bg-[#13B96D]/12 transition-colors"
-          >
-            Login
+          <button onClick={onLogin}
+            className="px-7 py-3.5 rounded-full border text-sm font-semibold transition-all duration-300"
+            style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.7)' }}>
+            Sign in
           </button>
         </motion.div>
-      </main>
 
-      <section className="rounded-3xl border border-[#D7EBE1] bg-white/55 backdrop-blur-md px-6 py-5 md:px-10 md:py-8">
-        <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr_1fr] gap-6 items-center">
-          <div className="text-left">
-            <BrandLogo className="h-7 w-7 rounded-full border border-[#13B96D]/25 bg-white/88 p-1" alt="IntentList logo" />
-            <h3 className="mt-3 text-2xl font-semibold text-[#1D3340]">The Vibe</h3>
-            <p className="mt-1 text-sm text-[#5A7481]">Organic motion inspired by the quiet pulses of nature.</p>
+        {/* Live parser demo */}
+        <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, delay: 0.65 }}
+          className="mt-14 w-full max-w-xl">
+          <p className="text-[9px] font-bold uppercase tracking-[0.4em] mb-3" style={{ color: 'rgba(255,255,255,0.3)' }}>
+            Try typing naturally →
+          </p>
+          <TypedDemo />
+          {/* Parsed output strip */}
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <ParsedCard emoji="📅" label="Date" value="Tomorrow" color="#5FD4A0" />
+            <ParsedCard emoji="⏰" label="Time" value="10:00 AM" color="#A78BFA" />
+            <ParsedCard emoji="🏷️" label="Tag" value="#work" color="#13B96D" />
+            <ParsedCard emoji="⚡" label="Priority" value="Normal" color="#94A3B8" />
           </div>
-          <div className="text-center md:border-l md:border-[#D7EBE1] md:pl-6">
-            <Clock3 className="w-5 h-5 mx-auto text-[#139C5E]" />
-            <p className="mt-3 text-xs uppercase tracking-[0.2em] text-[#6A8691]">Rhythmic Timers</p>
-          </div>
-          <div className="text-center md:border-l md:border-[#D7EBE1] md:pl-6">
-            <ShieldCheck className="w-5 h-5 mx-auto text-[#139C5E]" />
-            <p className="mt-3 text-xs uppercase tracking-[0.2em] text-[#6A8691]">Silent Spaces</p>
-          </div>
-          <div className="text-center md:border-l md:border-[#D7EBE1] md:pl-6">
-            <CheckCircle2 className="w-5 h-5 mx-auto text-[#139C5E]" />
-            <p className="mt-3 text-xs uppercase tracking-[0.2em] text-[#6A8691]">Natural Growth</p>
-          </div>
+        </motion.div>
+      </div>
+
+      {/* Scroll hint */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.8 }}
+        className="relative z-10 flex flex-col items-center pb-8 gap-1.5">
+        <span className="text-[9px] font-mono uppercase tracking-[0.4em]" style={{ color: 'rgba(255,255,255,0.2)' }}>scroll</span>
+        <motion.div className="w-px h-8" style={{ background: 'linear-gradient(to bottom, rgba(19,185,109,0.4), transparent)' }}
+          animate={{ scaleY: [0, 1, 0], originY: 0 }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }} />
+      </motion.div>
+    </section>
+
+    {/* ══════════════════════════════════════════
+        STAT BAR
+    ══════════════════════════════════════════ */}
+    <section className="relative py-10 border-y overflow-hidden" style={{ background: '#F5FBF8', borderColor: '#D4EAE0' }}>
+      <div className="max-w-4xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+        {[
+          { n: '50+', label: 'Date formats parsed' },
+          { n: '6',   label: 'Ambient soundscapes' },
+          { n: '4',   label: 'Views & perspectives' },
+          { n: '∞',   label: 'Brain dumps welcomed' },
+        ].map(({ n, label }, i) => (
+          <motion.div key={label}
+            initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.6 }}>
+            <p className="text-4xl font-black tracking-[-0.03em] font-serif italic" style={{ color: '#13B96D' }}>{n}</p>
+            <p className="text-xs font-medium mt-1" style={{ color: '#4A7568' }}>{label}</p>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+
+    {/* ══════════════════════════════════════════
+        FEATURE GRID
+    ══════════════════════════════════════════ */}
+    <section className="py-24 px-6 md:px-10" style={{ background: '#EDF8F2' }}>
+      <div className="max-w-5xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.7 }}
+          className="text-center mb-16">
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] mb-4" style={{ color: '#13B96D' }}>What's inside</p>
+          <h2 className="text-4xl sm:text-5xl font-serif italic tracking-tight leading-tight" style={{ color: '#1A3240' }}>
+            Everything you need.<br />Nothing you don't.
+          </h2>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <FeatureCard delay={0} tag="Smart Parsing"
+            icon={<Sparkles className="w-6 h-6" />}
+            title="Just type. It understands."
+            desc="Write 'call mom Sunday 3pm @personal' and IntentList extracts the date, time, tag, and priority. No forms, no dropdowns." />
+          <FeatureCard delay={0.1} tag="Focus Timer"
+            icon={<Timer className="w-6 h-6" />}
+            title="Pomodoro built the right way."
+            desc="Dark cosmic focus mode, ambient sounds, flow state detection, phase dots. The most beautiful Pomodoro timer you've used." />
+          <FeatureCard delay={0.2} tag="Weekly Review"
+            icon={<BarChart3 className="w-6 h-6" />}
+            title="Know how your week really went."
+            desc="Day-by-day charts, completion rates, focus area breakdown. Plan next week in the same view with a single input." />
+          <FeatureCard delay={0.3} tag="Smart Views"
+            icon={<CalendarIcon className="w-6 h-6" />}
+            title="Today. Overdue. Upcoming."
+            desc="The Daily Digest shows you exactly what matters right now — overdue tasks, today's priorities, and your completion rate." />
+          <FeatureCard delay={0.4} tag="Templates"
+            icon={<LayoutTemplate className="w-6 h-6" />}
+            title="One tap to load a full week."
+            desc="Morning Routine, Deep Work Session, Project Kickoff — batch templates that drop 4–6 pre-scheduled tasks instantly." />
+          <FeatureCard delay={0.5} tag="Task Breakdown"
+            icon={<Wand2 className="w-6 h-6" />}
+            title="Break big tasks into steps."
+            desc="Hit the wand on any task and it splits into 3–5 actionable subtasks. Progress bar tracks completion automatically." />
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
+
+    {/* ══════════════════════════════════════════
+        HOW IT WORKS
+    ══════════════════════════════════════════ */}
+    <section className="py-24 px-6 md:px-10 border-t" style={{ background: '#F5FBF8', borderColor: '#D4EAE0' }}>
+      <div className="max-w-3xl mx-auto text-center">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.7 }}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] mb-4" style={{ color: '#13B96D' }}>How it works</p>
+          <h2 className="text-4xl sm:text-5xl font-serif italic tracking-tight mb-16" style={{ color: '#1A3240' }}>
+            Three steps. That's it.
+          </h2>
+        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[
+            { n: '01', title: 'Brain dump', desc: 'Type anything in the input bar. Natural language, tags, dates — raw thoughts welcome.' },
+            { n: '02', title: 'It organises', desc: 'The parser extracts date, time, priority, and tags. No editing needed unless you want to.' },
+            { n: '03', title: 'You execute', desc: 'Use the Focus Timer, Daily Digest, or Deep Work mode to actually get things done.' },
+          ].map(({ n, title, desc }, i) => (
+            <motion.div key={n} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ delay: i * 0.12, duration: 0.6 }}
+              className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl font-black text-sm mb-5"
+                style={{ background: 'rgba(19,185,109,0.12)', color: '#0D8A4E' }}>{n}</div>
+              <h3 className="text-lg font-bold mb-2" style={{ color: '#1A3240' }}>{title}</h3>
+              <p className="text-sm leading-relaxed" style={{ color: '#4A7568' }}>{desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* ══════════════════════════════════════════
+        DARK CTA SECTION
+    ══════════════════════════════════════════ */}
+    <section className="relative py-32 px-6 overflow-hidden"
+      style={{ background: 'linear-gradient(160deg, #060F0B 0%, #0B1E14 100%)' }}>
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px)', backgroundSize: '48px 48px' }} />
+      <motion.div className="absolute rounded-full blur-[120px] pointer-events-none"
+        style={{ width: 500, height: 500, top: '-20%', left: '30%', background: 'rgba(19,185,109,0.1)' }}
+        animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }} />
+
+      <div className="relative z-10 max-w-2xl mx-auto text-center">
+        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.8 }}>
+          <h2 className="font-serif italic tracking-tight leading-[0.95] mb-6"
+            style={{ fontSize: 'clamp(2.8rem, 7vw, 5rem)', color: '#E8F5EE' }}>
+            Your mind deserves<br />
+            <span style={{ color: '#13B96D' }}>a better system.</span>
+          </h2>
+          <p className="text-base mb-10 max-w-md mx-auto leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            Free to start. No credit card. No onboarding maze. Just open it and type.
+          </p>
+          <button onClick={onSignup}
+            className="px-10 py-4 rounded-full text-base font-bold transition-all duration-300 active:scale-95"
+            style={{ background: '#13B96D', color: '#fff', boxShadow: '0 0 50px rgba(19,185,109,0.5)' }}
+            onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 0 70px rgba(19,185,109,0.7)')}
+            onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 0 50px rgba(19,185,109,0.5)')}>
+            Get started free →
+          </button>
+        </motion.div>
+      </div>
+    </section>
+
+    {/* ══════════════════════════════════════════
+        FOOTER
+    ══════════════════════════════════════════ */}
+    <footer className="py-8 px-6 md:px-10 border-t" style={{ background: '#EDF8F2', borderColor: '#D4EAE0' }}>
+      <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <BrandLogo className="h-8 w-8 rounded-xl p-1.5 border"
+            style={{ border: '1px solid #C8E6D8', background: 'rgba(255,255,255,0.8)' }} alt="IntentList" />
+          <span className="font-black text-sm tracking-[-0.02em]" style={{ color: '#1A3240' }}>IntentList</span>
+        </div>
+        <p className="text-xs" style={{ color: '#84ADA4' }}>
+          Built with intention. © {new Date().getFullYear()}
+        </p>
+        <div className="flex items-center gap-6 text-xs font-medium" style={{ color: '#4A7568' }}>
+          <button onClick={onLogin} className="hover:text-[#13B96D] transition-colors">Sign in</button>
+          <button onClick={onSignup} className="hover:text-[#13B96D] transition-colors">Sign up</button>
+        </div>
+      </div>
+    </footer>
   </div>
 );
 
@@ -283,6 +548,8 @@ export default function App() {
     try { const s = localStorage.getItem('intentlist_user'); return s ? JSON.parse(s) : null; }
     catch { return null; }
   });
+  const [isDark, setIsDark] = useLocalStorage<boolean>('intentlist_dark_mode', false);
+  const [cmdOpen, setCmdOpen] = useState(false);
   const [authScreen, setAuthScreen] = useState<'landing' | 'auth'>('landing');
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -324,6 +591,11 @@ export default function App() {
     return () => { mounted = false; unsub(); };
   }, []);
 
+  // ── Dark mode — apply/remove class on root element ──────────────────────
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+  }, []);
+
   // ── Keyboard shortcuts (navigation + task actions) ────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -336,6 +608,13 @@ export default function App() {
         'd': 'digest', 't': 'today', 'o': 'overdue',
         'u': 'upcoming', 'a': 'all', 'w': 'weekly',
       };
+
+      // Cmd+K / Ctrl+K — command palette
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCmdOpen(o => !o);
+        return;
+      }
 
       if (navMap[e.key]) {
         e.preventDefault();
@@ -451,7 +730,9 @@ export default function App() {
     setHasHydratedTasks(true);
     try {
       const data = await taskService.getTasks(user.id);
-      setTasks(mergeTaskCollections(data, cached));
+      const merged = mergeTaskCollections(data, cached);
+
+      setTasks(merged);
     } catch { /* use cache */ }
   };
 
@@ -541,6 +822,15 @@ export default function App() {
   const handleUpdatePriority = async (id: string, priority: Priority) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, priority } : t));
     await taskService.updateTask(id, { priority });
+  };
+
+  const handleEditTask = async (id: string, updates: Partial<Pick<Task, 'text' | 'date' | 'time' | 'priority'>>) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates, time: updates.time ?? null } : t));
+    try {
+      await taskService.updateTask(id, updates);
+    } catch (err) {
+      console.error('Failed to save edit:', err);
+    }
   };
 
   const handleDeleteTask = async (id: string) => {
@@ -719,6 +1009,7 @@ export default function App() {
     onToggle: handleToggleTask,
     onDelete: handleDeleteTask,
     onUpdatePriority: handleUpdatePriority,
+    onEdit: handleEditTask,
     onSelect: handleSelectTask,
     onMoveToToday: handleMoveToToday,
     onBreakdown: handleBreakdown,
@@ -728,13 +1019,45 @@ export default function App() {
 
   return (
     <div className={cn(
-      'flex h-screen bg-[#EDF8F2] text-[#1D3441] overflow-hidden relative transition-all duration-1000',
-      isPomodoroView && 'bg-[#EDF8F2] text-[#1D3441]',
-      isDeepWorkMode && 'bg-[#F2FBF6]',
+      'flex h-screen overflow-hidden relative transition-all duration-500',
+      isDark
+        ? 'bg-[#0D1A14] text-[#D8F0E6]'
+        : 'bg-[#EDF8F2] text-[#1D3441]',
+      isDeepWorkMode && !isDark && 'bg-[#F2FBF6]',
       isZenMode && 'bg-[#14382F] text-[#E6F7EF]'
     )}>
+      {/* ── Pomodoro Timer — fixed fullscreen overlay ── */}
+      {isPomodoroView && (
+        <div className="fixed inset-0 z-[60]">
+          <PomodoroTimer
+            isDeepWorkMode={isDeepWorkMode}
+            onExit={() => setActiveView('digest')}
+            mode={pomodoroMode}
+            setMode={setPomodoroMode}
+            timeLeft={pomodoroTimeLeft}
+            setTimeLeft={setPomodoroTimeLeft}
+            endAt={pomodoroEndAt}
+            setEndAt={setPomodoroEndAt}
+            isActive={pomodoroIsActive}
+            setIsActive={setPomodoroIsActive}
+            isMuted={pomodoroIsMuted}
+            setIsMuted={setPomodoroIsMuted}
+            notificationsEnabled={pomodoroNotificationsEnabled}
+            setNotificationsEnabled={setPomodoroNotificationsEnabled}
+            keepAwake={pomodoroKeepAwake}
+            setKeepAwake={setPomodoroKeepAwake}
+            isZenMode={isZenMode}
+            setIsZenMode={setIsZenMode}
+            tasks={tasks.filter(t => isToday(parseISO(t.date)) && !t.completed && !t.parentId)}
+          />
+        </div>
+      )}
       {!isPomodoroView && (
-        <div className={cn('atmosphere transition-all duration-1000', isDeepWorkMode && 'opacity-40 scale-110 blur-3xl', isZenMode && 'opacity-10 scale-150 blur-[100px]')} />
+        <div className={cn(
+          'atmosphere transition-all duration-1000',
+          isDeepWorkMode && 'opacity-40 scale-110 blur-3xl',
+          isZenMode && 'opacity-10 scale-150 blur-[100px]'
+        )} />
       )}
 
       {/* Sidebar — desktop */}
@@ -749,6 +1072,7 @@ export default function App() {
           onTagSelect={setSelectedTag}
           isPro={isPro}
           onUpgrade={() => setIsProModalOpen(true)}
+
           className={cn('transition-all duration-500', isZenMode && 'opacity-0 -translate-x-full pointer-events-none')}
         />
       )}
@@ -766,31 +1090,63 @@ export default function App() {
         )}>
           {/* Mobile top bar */}
           {!isPomodoroView && !(isDeepWorkMode || isZenMode) && (
-            <div className="mb-5 flex items-center justify-between gap-3 lg:hidden">
+            <div className="mb-5 flex items-center justify-between gap-2 lg:hidden">
               <button
                 onClick={() => setIsMobileNavOpen(true)}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#CFE6DA] bg-white/85 text-[#42635C] shadow-sm transition hover:border-[#13B96D]/45 hover:text-[#12935A]"
+                className={cn(
+                  "flex h-11 w-11 items-center justify-center rounded-2xl border shadow-sm transition flex-shrink-0",
+                  isDark
+                    ? 'border-white/12 bg-white/6 text-[#4E9972] hover:text-[#13B96D]'
+                    : 'border-[#CFE6DA] bg-white/85 text-[#42635C] hover:border-[#13B96D]/45 hover:text-[#12935A]'
+                )}
                 aria-label="Open navigation"
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div className="min-w-0 flex flex-1 items-center justify-center gap-3">
-                <BrandLogo className="h-10 w-10 rounded-2xl border border-[#CFE6DA] bg-white/85 p-1.5 shadow-sm" alt="IntentList logo" />
+
+              <div className="min-w-0 flex flex-1 items-center justify-center gap-2">
+                <BrandLogo
+                  className={cn("h-10 w-10 rounded-2xl border p-1.5 shadow-sm flex-shrink-0", isDark ? 'border-white/12 bg-white/8' : 'border-[#CFE6DA] bg-white/85')}
+                  alt="IntentList logo"
+                />
                 <div className="min-w-0 text-left">
-                  <p className="truncate text-sm font-semibold tracking-tight text-[#1A3142]">
+                  <p className={cn("truncate text-sm font-semibold tracking-tight", isDark ? 'text-[#D8F0E6]' : 'text-[#1A3142]')}>
                     {activeView === 'digest' || activeView === 'today'
                       ? `Hello, ${user.email.split('@')[0]}`
                       : activeView.charAt(0).toUpperCase() + activeView.slice(1)}
                   </p>
-                  <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-[#6B8D86]">Focus Orbit</p>
+                  <p className={cn("text-[10px] font-mono uppercase tracking-[0.3em]", isDark ? 'text-[#2A5C42]' : 'text-[#6B8D86]')}>Focus Orbit</p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsMobileContextOpen(true)}
-                className="rounded-2xl border border-[#CFE6DA] bg-white/85 px-3 py-3 text-[10px] font-mono uppercase tracking-[0.24em] text-[#42635C] shadow-sm transition hover:border-[#13B96D]/45 hover:text-[#12935A]"
-              >
-                {selectedTask ? 'Task' : 'Insights'}
-              </button>
+
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {/* Cmd+K */}
+                <button
+                  onClick={() => setCmdOpen(true)}
+                  className={cn("flex h-9 w-9 items-center justify-center rounded-xl border transition",
+                    isDark ? 'border-white/12 bg-white/6 text-[#4E9972]' : 'border-[#CFE6DA] bg-white/85 text-[#42635C]')}
+                  aria-label="Search"
+                >
+                  <Command className="h-4 w-4" />
+                </button>
+                {/* Dark mode */}
+                <button
+                  onClick={() => setIsDark(d => !d)}
+                  className={cn("flex h-9 w-9 items-center justify-center rounded-xl border transition",
+                    isDark ? 'border-white/12 bg-white/6 text-[#13B96D]' : 'border-[#CFE6DA] bg-white/85 text-[#5B7A75]')}
+                  aria-label="Toggle dark mode"
+                >
+                  {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </button>
+                {/* Insights */}
+                <button
+                  onClick={() => setIsMobileContextOpen(true)}
+                  className={cn("rounded-xl border px-2.5 py-2.5 text-[10px] font-mono uppercase tracking-[0.22em] shadow-sm transition",
+                    isDark ? 'border-white/12 bg-white/6 text-[#4E9972]' : 'border-[#CFE6DA] bg-white/85 text-[#42635C] hover:border-[#13B96D]/45')}
+                >
+                  {selectedTask ? 'Task' : 'Info'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -800,24 +1156,59 @@ export default function App() {
               <div className="flex-1 lg:mr-8">
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 lg:mb-8">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <h2 className="text-2xl font-serif italic text-[#1A3142] sm:text-3xl">
+                    <h2 className={cn("text-2xl font-serif italic sm:text-3xl", isDark ? 'text-[#D8F0E6]' : 'text-[#1A3142]')}>
                       {(activeView === 'today' || activeView === 'digest')
                         ? `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, ${user.email.split('@')[0]}`
                         : activeView.charAt(0).toUpperCase() + activeView.slice(1)}
                     </h2>
-                    <button
-                      onClick={() => setIsDeepWorkMode(!isDeepWorkMode)}
-                      className="flex items-center gap-2 self-start px-4 py-2 rounded-full bg-white/90 border border-[#CFE6DA] text-[10px] font-mono tracking-widest uppercase text-[#5B7A75] hover:text-[#128D57] hover:border-[#13B96D]/40 transition-all shadow-sm"
-                    >
-                      <Sparkles className="w-3 h-3" /> Deep Work
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Cmd+K search */}
+                      <button
+                        onClick={() => setCmdOpen(true)}
+                        className={cn(
+                          "flex items-center gap-2 self-start px-4 py-2 rounded-full border text-[10px] font-mono tracking-widest uppercase transition-all shadow-sm",
+                          isDark
+                            ? 'bg-white/6 border-white/12 text-[#4E9972] hover:text-[#13B96D] hover:border-[#13B96D]/40'
+                            : 'bg-white/90 border-[#CFE6DA] text-[#5B7A75] hover:text-[#128D57] hover:border-[#13B96D]/40'
+                        )}
+                      >
+                        <Command className="w-3 h-3" />
+                        <span className="hidden sm:inline">Search</span>
+                        <kbd className={cn("hidden sm:inline-flex text-[9px] px-1 py-0.5 rounded border", isDark ? 'border-white/10 text-[#2A5C42]' : 'border-[#CCE4D8] text-[#9AB8B0]')}>⌘K</kbd>
+                      </button>
+                      {/* Deep Work */}
+                      <button
+                        onClick={() => setIsDeepWorkMode(!isDeepWorkMode)}
+                        className={cn(
+                          "flex items-center gap-2 self-start px-4 py-2 rounded-full border text-[10px] font-mono tracking-widest uppercase transition-all shadow-sm",
+                          isDark
+                            ? 'bg-white/6 border-white/12 text-[#4E9972] hover:text-[#13B96D] hover:border-[#13B96D]/40'
+                            : 'bg-white/90 border-[#CFE6DA] text-[#5B7A75] hover:text-[#128D57] hover:border-[#13B96D]/40'
+                        )}
+                      >
+                        <Sparkles className="w-3 h-3" /> Deep Work
+                      </button>
+                      {/* Dark mode toggle */}
+                      <button
+                        onClick={() => setIsDark(d => !d)}
+                        title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                        className={cn(
+                          "flex items-center justify-center w-9 h-9 rounded-full border transition-all shadow-sm",
+                          isDark
+                            ? 'bg-white/6 border-white/12 text-[#13B96D] hover:border-[#13B96D]/40'
+                            : 'bg-white/90 border-[#CFE6DA] text-[#5B7A75] hover:text-[#128D57] hover:border-[#13B96D]/40'
+                        )}
+                      >
+                        {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                   {(activeView === 'today' || activeView === 'digest') && (
                     <div className="mt-2 flex items-center gap-4">
-                      <div className="flex-1 h-1 bg-[#DDEFE6] rounded-full overflow-hidden">
+                      <div className={cn("flex-1 h-1 rounded-full overflow-hidden", isDark ? 'bg-[#13B96D]/15' : 'bg-[#DDEFE6]')}>
                         <motion.div initial={{ width: 0 }} animate={{ width: `${completionRate}%` }} className="h-full bg-[#13B96D]" />
                       </div>
-                      <span className="text-[10px] font-mono text-[#6B8D86] tracking-widest uppercase">{completionRate}% DONE</span>
+                      <span className={cn("text-[10px] font-mono tracking-widest uppercase", isDark ? 'text-[#4E9972]' : 'text-[#6B8D86]')}>{completionRate}% DONE</span>
                     </div>
                   )}
                 </motion.div>
@@ -969,26 +1360,8 @@ export default function App() {
                       ))}
                     </div>
                   ) : activeView === 'pomodoro' ? (
-                    <PomodoroTimer
-                      isDeepWorkMode={isDeepWorkMode}
-                      onExit={() => setActiveView('today')}
-                      mode={pomodoroMode}
-                      setMode={setPomodoroMode}
-                      timeLeft={pomodoroTimeLeft}
-                      setTimeLeft={setPomodoroTimeLeft}
-                      endAt={pomodoroEndAt}
-                      setEndAt={setPomodoroEndAt}
-                      isActive={pomodoroIsActive}
-                      setIsActive={setPomodoroIsActive}
-                      isMuted={pomodoroIsMuted}
-                      setIsMuted={setPomodoroIsMuted}
-                      notificationsEnabled={pomodoroNotificationsEnabled}
-                      setNotificationsEnabled={setPomodoroNotificationsEnabled}
-                      keepAwake={pomodoroKeepAwake}
-                      setKeepAwake={setPomodoroKeepAwake}
-                      isZenMode={isZenMode}
-                      setIsZenMode={setIsZenMode}
-                    />
+                    // Rendered as fixed overlay above — nothing here
+                    <div/>
                   ) : (
                     <TaskList
                       title={activeView.charAt(0).toUpperCase() + activeView.slice(1)}
@@ -1030,6 +1403,7 @@ export default function App() {
           selectedTask={selectedTask}
           onUpgrade={() => setIsProModalOpen(true)}
           isPro={isPro}
+
         />
       )}
 
@@ -1059,6 +1433,7 @@ export default function App() {
                   onTagSelect={tag => { setSelectedTag(tag); setIsMobileNavOpen(false); }}
                   isPro={isPro}
                   onUpgrade={() => { setIsProModalOpen(true); setIsMobileNavOpen(false); }}
+
                   className="h-full w-[84vw] max-w-[320px] shadow-[0_24px_64px_rgba(23,61,53,0.18)]"
                 />
                 <button
@@ -1096,6 +1471,7 @@ export default function App() {
                 onUpgrade={() => setIsProModalOpen(true)}
                 onClose={() => setIsMobileContextOpen(false)}
                 isPro={isPro}
+
                 className="h-[min(78vh,720px)] w-full rounded-t-[2rem] border-x-0 border-b-0 px-5 pb-8 pt-5 shadow-[0_-20px_60px_rgba(23,61,53,0.16)]"
               />
             </motion.div>
