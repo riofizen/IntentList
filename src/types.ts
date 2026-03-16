@@ -20,6 +20,7 @@ export interface Task {
   recurrence?: RecurrenceRule | null;
   duration?: number | null;
   raw?: string | null;
+  notes?: string | null;
 }
 
 export interface User {

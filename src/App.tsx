@@ -15,6 +15,8 @@ import { Templates } from './components/Templates';
 import { HabitTracker } from './components/HabitTracker';
 import { CommandPalette } from './components/CommandPalette';
 import { LandingPage } from './components/LandingPage';
+import { Onboarding, type OnboardingResult } from './components/Onboarding';
+import { ShareRecap } from './components/ShareRecap';
 import { taskService, authService } from './services/api';
 import { type ParsedIntent } from './lib/parser';
 import { parseWithAI } from './services/aiParser';
@@ -170,6 +172,8 @@ export default function App() {
   const [showEntrance, setShowEntrance] = useState(true);
   const [deletedTask, setDeletedTask] = useState<{ task: Task; timeout: ReturnType<typeof setTimeout> } | null>(null);
   const [cmdOpen, setCmdOpen]         = useState(false);
+  const [showOnboarding, setShowOnboarding] = useLocalStorage<boolean>('intentlist_onboarding_done', false);
+  const [showShareRecap, setShowShareRecap] = useState(false);
 
   const [pomodoroMode, setPomodoroMode]     = useLocalStorage<'pomodoro' | 'shortBreak' | 'longBreak'>('pomodoro_mode', 'pomodoro');
   const [pomodoroTimeLeft, setPomodoroTimeLeft] = useLocalStorage<number>('pomodoro_time', 25 * 60);
@@ -379,6 +383,32 @@ export default function App() {
     try { await taskService.updateTask(id, updates); } catch { /* silent */ }
   };
 
+  const handleOnboardingComplete = async (result: OnboardingResult) => {
+    setShowOnboarding(true); // mark done
+    // Add first task if provided
+    if (result.firstTask && user) {
+      await handleAddTask(result.firstTask);
+    }
+    // Add habit if selected
+    if (result.habit) {
+      const stored = localStorage.getItem('intentlist_habits');
+      const habits = stored ? JSON.parse(stored) : [];
+      habits.push({
+        id: Math.random().toString(36).substr(2, 9),
+        name: result.habit.name,
+        icon: result.habit.icon,
+        color: result.habit.color,
+        frequency: 7,
+        completedDates: [],
+        createdAt: new Date().toISOString(),
+      });
+      localStorage.setItem('intentlist_habits', JSON.stringify(habits));
+    }
+    // Navigate to digest if they added a task
+    if (result.firstTask) setActiveView('digest');
+    else if (result.habit) setActiveView('habits');
+  };
+
   const handleDeleteTask = async (id: string) => {
     const task = tasks.find(t => t.id === id); if (!task) return;
     setTasks(prev => prev.filter(t => t.id !== id && t.parentId !== id));
@@ -496,6 +526,11 @@ export default function App() {
 
   const isPomodoroView = activeView === 'pomodoro';
 
+  // Grab streak from pomodoro analytics for share recap
+  const analytics = (() => {
+    try { const r = localStorage.getItem('pomodoro_data_center'); return r ? JSON.parse(r) : null; } catch { return null; }
+  })();
+
   const handleSelectTask = (id: string) => {
     setSelectedTaskId(id);
     if (isMobileLayout) setIsMobileContextOpen(true);
@@ -531,6 +566,29 @@ export default function App() {
       {!isPomodoroView && (
         <div className={cn('atmosphere transition-all duration-1000', isDeepWorkMode && 'opacity-40 scale-110 blur-3xl', isZenMode && 'opacity-10 scale-150 blur-[100px]')} />
       )}
+
+      {/* ── Onboarding — first-run only ── */}
+      <AnimatePresence>
+        {user && !showOnboarding && (
+          <Onboarding
+            userEmail={user.email}
+            onComplete={handleOnboardingComplete}
+            onSkip={() => setShowOnboarding(true)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Share Recap ── */}
+      <AnimatePresence>
+        {showShareRecap && (
+          <ShareRecap
+            tasks={tasks}
+            userEmail={user.email}
+            streak={analytics?.currentStreak ?? 0}
+            onClose={() => setShowShareRecap(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Command Palette ── */}
       <CommandPalette
@@ -606,7 +664,14 @@ export default function App() {
             </div>
           )}
 
-          {/* Header + InputBox */}
+          {!isPomodoroView && activeView === 'weekly' && !isDeepWorkMode && !isZenMode && (
+            <div className="mb-4 flex items-center justify-end">
+              <button onClick={() => setShowShareRecap(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#13B96D] text-white text-xs font-bold uppercase tracking-widest hover:bg-[#0FAA64] transition-all shadow-lg shadow-[#13B96D]/20 active:scale-95">
+                Share this week ↗
+              </button>
+            </div>
+          )}
           {!isPomodoroView && activeView !== 'weekly' && activeView !== 'templates' && activeView !== 'habits' && !(isDeepWorkMode || isZenMode) && (
             <header className="mb-10 flex flex-col gap-6 transition-all duration-700 lg:mb-16">
               <div className="flex-1 lg:mr-8">
@@ -706,7 +771,15 @@ export default function App() {
                   {activeView === 'digest' ? (
                     <DailyDigest tasks={tasks} user={user} onCarryForward={handleCarryForward} onViewChange={handleViewChange} />
                   ) : activeView === 'weekly' ? (
-                    <WeeklyReview tasks={tasks} onAddTask={handleAddTask} />
+                    <div>
+                      <div className="flex items-center justify-end mb-4 lg:hidden">
+                        <button onClick={() => setShowShareRecap(true)}
+                          className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#13B96D] text-white text-xs font-bold uppercase tracking-widest hover:bg-[#0FAA64] transition-all shadow-lg shadow-[#13B96D]/20">
+                          Share recap ↗
+                        </button>
+                      </div>
+                      <WeeklyReview tasks={tasks} onAddTask={handleAddTask} />
+                    </div>
                   ) : activeView === 'templates' ? (
                     <Templates onApply={handleApplyTemplate} />
                   ) : activeView === 'habits' ? (
