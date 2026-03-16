@@ -10,16 +10,16 @@ export interface Task {
   id: string;
   userId: string;
   text: string;
-  date: string; // ISO date string (YYYY-MM-DD)
-  time: string | null; // HH:mm
+  date: string;
+  time: string | null;
   completed: boolean;
   priority: Priority;
   tags: string[];
   createdAt: string;
-  // New optional fields — stored in local state/cache, persisted to DB once columns are added
   parentId?: string | null;
   recurrence?: RecurrenceRule | null;
   duration?: number | null;
+  raw?: string | null;
 }
 
 export interface User {
@@ -38,4 +38,6 @@ export type ViewType =
   | 'pomodoro'
   | 'digest'
   | 'weekly'
-  | 'templates';
+  | 'templates'
+  | 'habits';
+
