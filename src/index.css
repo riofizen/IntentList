@@ -7,26 +7,68 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+/* ─── CSS custom properties ───────────────────────────────────────────────── */
+
+:root {
+  --app-bg:          #EDF8F2;
+  --app-text:        #1D3441;
+  --card-bg:         rgba(255,255,255,0.9);
+  --card-border:     #D6EBE1;
+  --sidebar-bg:      rgba(242,251,246,0.8);
+  --sidebar-border:  rgba(215,236,226,0.85);
+  --input-bg:        #F5FCF8;
+  --input-border:    #CFE7DC;
+  --muted:           #6B8D86;
+  --scrollbar-thumb: #C1E4D2;
+}
+
+html.dark {
+  --app-bg:          #0B1812;
+  --app-text:        #D8F0E6;
+  --card-bg:         rgba(255,255,255,0.05);
+  --card-border:     rgba(255,255,255,0.1);
+  --sidebar-bg:      rgba(8,18,12,0.92);
+  --sidebar-border:  rgba(255,255,255,0.08);
+  --input-bg:        rgba(255,255,255,0.06);
+  --input-border:    rgba(255,255,255,0.12);
+  --muted:           #4E9972;
+  --scrollbar-thumb: rgba(19,185,109,0.3);
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+
 @layer base {
   body {
-    @apply font-sans antialiased bg-[#EDF8F2] text-[#1D3441];
+    @apply font-sans antialiased;
+    background-color: var(--app-bg);
+    color: var(--app-text);
   }
 }
 
+/* ─── Utilities ───────────────────────────────────────────────────────────── */
+
 @layer utilities {
+
+  /* Glass card */
   .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-[#D8EDE2] shadow-[0_16px_38px_rgba(39,74,63,0.08)];
-  }
-  
-  .glass-sidebar {
-    @apply bg-[#F2FBF6]/80 backdrop-blur-2xl border-r border-[#D7ECE2]/85;
+    @apply backdrop-blur-xl shadow-[0_16px_38px_rgba(39,74,63,0.08)];
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
   }
 
+  /* Glass sidebar */
+  .glass-sidebar {
+    @apply backdrop-blur-2xl;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+  }
+
+  /* Atmosphere background orbs */
   .atmosphere {
-    background: 
-      radial-gradient(circle at 15% 8%, rgba(47, 189, 131, 0.16) 0%, transparent 42%),
-      radial-gradient(circle at 78% 82%, rgba(117, 211, 172, 0.2) 0%, transparent 46%),
-      radial-gradient(circle at 50% -10%, rgba(207, 241, 226, 0.72) 0%, transparent 58%);
+    background:
+      radial-gradient(circle at 15% 8%,  rgba(47,189,131,0.16)  0%, transparent 42%),
+      radial-gradient(circle at 78% 82%, rgba(117,211,172,0.2)  0%, transparent 46%),
+      radial-gradient(circle at 50% -10%,rgba(207,241,226,0.72) 0%, transparent 58%);
     position: fixed;
     inset: 0;
     z-index: -1;
@@ -34,6 +76,13 @@
     transition: all 1s ease;
   }
 
+  html.dark .atmosphere {
+    background:
+      radial-gradient(circle at 15% 8%,  rgba(19,185,109,0.07) 0%, transparent 42%),
+      radial-gradient(circle at 78% 82%, rgba(19,185,109,0.04) 0%, transparent 46%);
+  }
+
+  /* Film grain noise */
   .lofi-noise {
     position: fixed;
     inset: 0;
@@ -43,23 +92,24 @@
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   }
 
+  /* Zen / focus overlays */
   .zen-gradient {
-    background: radial-gradient(circle at center, rgba(19, 185, 109, 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle at center, rgba(19,185,109,0.08) 0%, transparent 70%);
   }
 
   .pomodoro-gradient {
     background:
-      radial-gradient(980px 640px at 16% 18%, rgba(112, 219, 171, 0.3) 0%, transparent 54%),
-      radial-gradient(820px 520px at 84% 80%, rgba(53, 183, 128, 0.16) 0%, transparent 58%),
-      radial-gradient(760px 540px at 50% 58%, rgba(232, 248, 241, 0.88) 0%, transparent 64%),
+      radial-gradient(980px 640px at 16% 18%, rgba(112,219,171,0.3)  0%, transparent 54%),
+      radial-gradient(820px 520px at 84% 80%, rgba(53,183,128,0.16)  0%, transparent 58%),
+      radial-gradient(760px 540px at 50% 58%, rgba(232,248,241,0.88) 0%, transparent 64%),
       linear-gradient(135deg, #e7f5ee 0%, #eef9f3 45%, #e4f4ec 100%);
   }
 
   .pomodoro-vignette {
     background:
-      radial-gradient(circle at 52% 46%, rgba(90, 199, 151, 0.14) 0%, transparent 44%),
-      radial-gradient(circle at 85% 100%, rgba(48, 99, 82, 0.2) 8%, transparent 62%),
-      radial-gradient(circle at 15% 0%, rgba(176, 227, 204, 0.24) 8%, transparent 57%);
+      radial-gradient(circle at 52% 46%, rgba(90,199,151,0.14)  0%, transparent 44%),
+      radial-gradient(circle at 85% 100%,rgba(48,99,82,0.2)    8%, transparent 62%),
+      radial-gradient(circle at 15% 0%,  rgba(176,227,204,0.24) 8%, transparent 57%);
     pointer-events: none;
   }
 
@@ -72,13 +122,116 @@
     @apply transition-all duration-700 ease-out;
   }
 
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
+  /* Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar       { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track  { background: transparent; }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-[#C1E4D2] rounded-full hover:bg-[#A7D9C3] transition-colors;
+    background: var(--scrollbar-thumb);
+    border-radius: 9999px;
   }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #A7D9C3;
+  }
+}
+
+/* ─── Dark mode global token overrides ────────────────────────────────────── */
+
+/* These patch the hardcoded Tailwind colors we use throughout the app */
+
+html.dark .bg-\[\#EDF8F2\]  { background-color: var(--app-bg) !important; }
+html.dark .bg-\[\#F2FBF6\]  { background-color: var(--app-bg) !important; }
+html.dark .bg-\[\#F5FBF8\]  { background-color: var(--app-bg) !important; }
+html.dark .bg-\[\#F4FBF8\]\/90 { background-color: rgba(11,24,18,0.9) !important; }
+
+html.dark .bg-white\/90,
+html.dark .bg-white\/85,
+html.dark .bg-white\/80,
+html.dark .bg-white\/75,
+html.dark .bg-white\/70,
+html.dark .bg-white\/60,
+html.dark .bg-white\/55 {
+  background: rgba(255,255,255,0.06) !important;
+}
+
+html.dark .border-\[\#D6EBE1\],
+html.dark .border-\[\#D7ECE2\],
+html.dark .border-\[\#CFE6DA\],
+html.dark .border-\[\#C8E6D8\],
+html.dark .border-\[\#D4EAE0\],
+html.dark .border-\[\#D5EADF\] {
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+html.dark .text-\[\#1D3441\],
+html.dark .text-\[\#1A3142\],
+html.dark .text-\[\#1A3240\],
+html.dark .text-\[\#1C3340\] {
+  color: #D8F0E6 !important;
+}
+
+html.dark .text-\[\#6B8D86\],
+html.dark .text-\[\#5E7B76\],
+html.dark .text-\[\#84ADA4\],
+html.dark .text-\[\#4A7568\],
+html.dark .text-\[\#5B7A75\] {
+  color: #4E9972 !important;
+}
+
+html.dark .text-\[\#9AB8B0\],
+html.dark .text-\[\#8AA89C\] {
+  color: rgba(78,153,114,0.6) !important;
+}
+
+/* Dark input fields */
+html.dark input:not([type="range"]):not([type="checkbox"]),
+html.dark textarea {
+  background: var(--input-bg) !important;
+  border-color: var(--input-border) !important;
+  color: var(--app-text) !important;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: rgba(255,255,255,0.28) !important;
+}
+
+/* Dark sidebar active state */
+html.dark .bg-\[\#EAF7F1\] {
+  background-color: rgba(19,185,109,0.12) !important;
+}
+html.dark .text-\[\#12935A\] {
+  color: #13B96D !important;
+}
+html.dark .border-\[\#CDE6DB\],
+html.dark .ring-\[\#CDE6DB\] {
+  border-color: rgba(19,185,109,0.3) !important;
+}
+
+/* Dark glass override */
+html.dark .glass {
+  background: rgba(255,255,255,0.05) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+  box-shadow: 0 16px 38px rgba(0,0,0,0.5) !important;
+}
+
+/* Dark overdue / warning backgrounds */
+html.dark .bg-amber-50\/70 { background-color: rgba(245,158,11,0.08) !important; }
+html.dark .border-amber-200\/60 { border-color: rgba(245,158,11,0.2) !important; }
+html.dark .bg-red-50\/60 { background-color: rgba(239,68,68,0.08) !important; }
+html.dark .border-red-200\/50 { border-color: rgba(239,68,68,0.15) !important; }
+
+/* Dark completion / success backgrounds */
+html.dark .bg-\[\#ECF9F2\] { background-color: rgba(19,185,109,0.1) !important; }
+html.dark .border-\[\#CBE7D9\] { border-color: rgba(19,185,109,0.25) !important; }
+
+/* Dark mode smooth transition */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 0.25s;
+  transition-timing-function: ease;
+}
+/* Don't override animation durations */
+*[class*="animate-"],
+*[style*="animation"],
+*[style*="transition"] {
+  transition-property: none;
 }

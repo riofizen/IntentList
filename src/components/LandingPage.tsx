@@ -68,42 +68,49 @@ const TypedDemo: React.FC = () => {
   const prioColor = current.result.priority === 'High' ? '#F87171' : '#94A3B8';
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-3">
-      {/* Input bar */}
+    /* Fixed height = input (~60px) + gap (12px) + cards (~64px) + label (20px) ≈ 160px
+       Cards always rendered but invisible when not showing — no layout shift ever */
+    <div className="w-full max-w-2xl mx-auto" style={{ height: 160, position: 'relative' }}>
+
+      {/* Input bar — top, fixed */}
       <div className="flex items-center gap-3 px-5 py-4 rounded-2xl border"
         style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)' }}>
         <div className="w-2 h-2 rounded-full flex-shrink-0 animate-pulse" style={{ background: '#13B96D' }} />
-        <span className="font-mono text-sm sm:text-base flex-1" style={{ color: '#E2F4EC', minHeight: '1.5em' }}>
+        <span className="font-mono text-sm sm:text-base flex-1"
+          style={{ color: '#E2F4EC', height: '1.5em', lineHeight: '1.5em', display: 'block', overflow: 'hidden', whiteSpace: 'nowrap' }}>
           {highlight(text)}
           <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 1, repeat: Infinity }} style={{ color: '#13B96D' }}>|</motion.span>
         </span>
-        <span className="text-[10px] font-mono uppercase tracking-widest hidden sm:block" style={{ color: 'rgba(255,255,255,0.2)' }}>brain dump</span>
+        <span className="text-[10px] font-mono uppercase tracking-widest hidden sm:block flex-shrink-0"
+          style={{ color: 'rgba(255,255,255,0.2)' }}>brain dump</span>
       </div>
 
-      {/* Parsed result */}
-      <AnimatePresence>
-        {showResult && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3 }}
-            className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {[
-              { emoji: '📅', label: 'Date',     value: current.result.date,                 color: '#5FD4A0' },
-              { emoji: '⏰', label: 'Time',     value: current.result.time ?? '—',           color: '#A78BFA' },
-              { emoji: '🏷️', label: 'Tag',      value: current.result.tag,                   color: '#13B96D' },
-              { emoji: '⚡', label: 'Priority', value: current.result.priority,              color: prioColor },
-            ].map(({ emoji, label, value, color }) => (
-              <div key={label} className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border"
-                style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.08)' }}>
-                <span className="text-sm flex-shrink-0">{emoji}</span>
-                <div className="min-w-0">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.25em]" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</p>
-                  <p className="text-xs font-bold truncate" style={{ color }}>{value}</p>
-                </div>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Cards — always in DOM, fade with opacity only. No AnimatePresence needed. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3"
+        style={{
+          opacity:        showResult ? 1 : 0,
+          transform:      showResult ? 'translateY(0)' : 'translateY(4px)',
+          transition:     'opacity 0.3s ease, transform 0.3s ease',
+          pointerEvents:  showResult ? 'auto' : 'none',
+        }}>
+        {[
+          { emoji: '📅', label: 'Date',     value: current.result.date,        color: '#5FD4A0' },
+          { emoji: '⏰', label: 'Time',     value: current.result.time ?? '—',  color: '#A78BFA' },
+          { emoji: '🏷️', label: 'Tag',      value: current.result.tag,          color: '#13B96D' },
+          { emoji: '⚡', label: 'Priority', value: current.result.priority,     color: prioColor },
+        ].map(({ emoji, label, value, color }) => (
+          <div key={label} className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border"
+            style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.08)' }}>
+            <span className="text-sm flex-shrink-0">{emoji}</span>
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold uppercase tracking-[0.25em]"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</p>
+              <p className="text-xs font-bold truncate" style={{ color }}>{value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 };
@@ -609,6 +616,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
               { label: 'Features',      href: '#features'   },
               { label: 'The Science',   href: '#science'    },
               { label: 'How it works',  href: '#how'        },
+              { label: 'Compare',       href: '#compare'    },
               { label: 'Pricing',       href: '#pricing'    },
               { label: 'FAQ',           href: '#faq'        },
             ].map(({ label, href }) => (
@@ -1039,6 +1047,105 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onSignup }) =
           </Reveal>
           <Reveal delay={0.1}>
             <FAQ dark={false} />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════
+          COMPARISON TABLE
+      ══════════════════════════════════════════════ */}
+      <section id="compare" className="py-28 px-6 md:px-10 border-t" style={{ background: '#EDF8F2', borderColor: '#D4EAE0' }}>
+        <div className="max-w-4xl mx-auto">
+          <Reveal className="text-center mb-12">
+            <p className="text-[10px] font-bold uppercase tracking-[0.42em] mb-4" style={{ color: '#13B96D' }}>How we compare</p>
+            <h2 className="text-4xl sm:text-5xl font-serif italic tracking-tight mb-4" style={{ color: '#1A3240' }}>
+              Better in every way<br />that matters.
+            </h2>
+            <p className="text-base max-w-lg mx-auto" style={{ color: '#4A7568' }}>
+              Other tools make you choose between beautiful and functional. IntentList doesn't.
+            </p>
+          </Reveal>
+
+          <Reveal delay={0.1}>
+            <div className="overflow-x-auto rounded-3xl border" style={{ borderColor: '#D4EAE0' }}>
+              <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#F2FBF6', borderBottom: '1px solid #D4EAE0' }}>
+                    <th className="text-left px-6 py-4 font-bold text-[#1A3240]" style={{ width: '32%' }}>Feature</th>
+                    {[
+                      { name: 'IntentList', highlight: true  },
+                      { name: 'TickTick',   highlight: false },
+                      { name: 'Sunsama',    highlight: false },
+                      { name: 'Todoist',    highlight: false },
+                    ].map(col => (
+                      <th key={col.name}
+                        className="px-4 py-4 text-center font-bold"
+                        style={{
+                          color: col.highlight ? '#13B96D' : '#84ADA4',
+                          background: col.highlight ? 'rgba(19,185,109,0.06)' : 'transparent',
+                        }}>
+                        {col.highlight && <span className="block text-[9px] uppercase tracking-widest mb-0.5 text-[#13B96D]">★ You're here</span>}
+                        {col.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { feature: 'Starting price',          intentlist: 'Free',     ticktick: 'Free',    sunsama: '$20/mo',  todoist: 'Free'     },
+                    { feature: 'Natural language parsing', intentlist: '✓ Smart',  ticktick: '✓ Basic', sunsama: '✗',       todoist: '✓ Good'   },
+                    { feature: 'Built-in Pomodoro timer', intentlist: '✓ Cinematic',ticktick:'✓ Basic', sunsama: '✗',       todoist: '✗'        },
+                    { feature: 'Habit tracker',           intentlist: '✓',        ticktick: '✓',       sunsama: '✗',       todoist: '✗'        },
+                    { feature: 'Personal insights',       intentlist: '✓ Pro',    ticktick: '✗',       sunsama: '✗',       todoist: '✗'        },
+                    { feature: 'Weekly review built-in',  intentlist: '✓',        ticktick: '✗',       sunsama: '✓',       todoist: '✗'        },
+                    { feature: 'Cmd+K command palette',   intentlist: '✓',        ticktick: '✗',       sunsama: '✗',       todoist: '✗'        },
+                    { feature: 'Ambient focus sounds',    intentlist: '✓ 6 modes',ticktick: '✗',       sunsama: '✗',       todoist: '✗'        },
+                    { feature: 'Dark mode',               intentlist: '✓',        ticktick: '✓',       sunsama: '✓',       todoist: '✓'        },
+                    { feature: 'PWA / offline capable',   intentlist: '✓',        ticktick: '✓',       sunsama: '✗',       todoist: '✓'        },
+                    { feature: 'Pro price',               intentlist: '$5/mo',    ticktick: '$3/mo',   sunsama: '$20/mo',  todoist: '$4/mo'    },
+                    { feature: 'Free plan generous?',     intentlist: '✓ Yes',    ticktick: '~ Limited',sunsama:'✗ None',  todoist: '~ Limited'},
+                  ].map((row, i) => (
+                    <tr key={row.feature}
+                      style={{
+                        borderBottom: i < 11 ? '1px solid #E8F5EF' : 'none',
+                        background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.5)',
+                      }}>
+                      <td className="px-6 py-3.5 font-medium" style={{ color: '#1A3240' }}>{row.feature}</td>
+                      {[
+                        { val: row.intentlist, highlight: true  },
+                        { val: row.ticktick,   highlight: false },
+                        { val: row.sunsama,    highlight: false },
+                        { val: row.todoist,    highlight: false },
+                      ].map((cell, ci) => (
+                        <td key={ci} className="px-4 py-3.5 text-center text-xs font-semibold"
+                          style={{
+                            background: cell.highlight ? 'rgba(19,185,109,0.04)' : 'transparent',
+                            color: cell.val.startsWith('✓') ? '#0D8A4E'
+                                 : cell.val.startsWith('✗') ? '#D1A0A0'
+                                 : cell.val.startsWith('~') ? '#B8A050'
+                                 : '#4A7568',
+                          }}>
+                          {cell.val}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.2}>
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <button onClick={onSignup}
+                className="px-8 py-3.5 rounded-full text-sm font-bold text-white transition-all"
+                style={{ background: '#13B96D', boxShadow: '0 0 30px rgba(19,185,109,0.35)' }}>
+                Try IntentList free →
+              </button>
+              <p className="text-xs" style={{ color: '#84ADA4' }}>
+                No credit card. No time limit on free plan.
+              </p>
+            </div>
           </Reveal>
         </div>
       </section>

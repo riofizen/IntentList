@@ -17,6 +17,9 @@ import { CommandPalette } from './components/CommandPalette';
 import { LandingPage } from './components/LandingPage';
 import { Onboarding, type OnboardingResult } from './components/Onboarding';
 import { ShareRecap } from './components/ShareRecap';
+import { InsightsPanel } from './components/InsightsPanel';
+import { MobileBottomNav } from './components/MobileBottomNav';
+import { syncNotifications, clearAllNotifications } from './lib/notifications';
 import { taskService, authService } from './services/api';
 import { type ParsedIntent } from './lib/parser';
 import { parseWithAI } from './services/aiParser';
@@ -30,7 +33,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Undo2, AlertCircle, ChevronRight, ChevronLeft, Sparkles,
-  X, Clock3, ShieldCheck, CheckCircle2, Menu,
+  X, Clock3, ShieldCheck, CheckCircle2, Menu, Moon, Sun,
   Timer, BarChart3, Calendar as CalendarIcon, LayoutTemplate, Wand2,
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
@@ -171,7 +174,8 @@ export default function App() {
   const [showProWelcome, setShowProWelcome] = useState(false);
   const [showEntrance, setShowEntrance] = useState(true);
   const [deletedTask, setDeletedTask] = useState<{ task: Task; timeout: ReturnType<typeof setTimeout> } | null>(null);
-  const [cmdOpen, setCmdOpen]         = useState(false);
+  const [cmdOpen, setCmdOpen]               = useState(false);
+  const [isDark, setIsDark]                 = useLocalStorage<boolean>('intentlist_dark_mode', false);
   const [showOnboarding, setShowOnboarding] = useLocalStorage<boolean>('intentlist_onboarding_done', false);
   const [showShareRecap, setShowShareRecap] = useState(false);
 
@@ -191,6 +195,17 @@ export default function App() {
   const timerCompletionRef = useRef<string | null>(null);
 
   const isPro = user?.plan === 'pro';
+
+  // ── Dark mode ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
+
+  // ── Notification sync ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user || tasks.length === 0) return;
+    syncNotifications(tasks);
+  }, [tasks, user]);
 
   useEffect(() => {
     let mounted = true;
@@ -514,7 +529,7 @@ export default function App() {
     all:       topLevelTasks.length,
     calendar:  tasks.filter(t => t.date === format(selectedDate, 'yyyy-MM-dd') && !t.parentId).length,
     timeline:  topLevelTasks.length,
-    pomodoro:  0, weekly: 0, templates: 0, habits: 0,
+    pomodoro:  0, weekly: 0, templates: 0, habits: 0, insights: 0,
   };
 
   const selectedTask     = tasks.find(t => t.id === selectedTaskId);
@@ -623,7 +638,7 @@ export default function App() {
       {!isPomodoroView && !isMobileLayout && (
         <Sidebar
           activeView={activeView} onViewChange={handleViewChange} counts={counts}
-          onLogout={async () => { await authService.logout(); setUser(null); setAuthMode('login'); setAuthScreen('landing'); }}
+          onLogout={async () => { await authService.logout(); clearAllNotifications(); setUser(null); setAuthMode('login'); setAuthScreen('landing'); }}
           tags={allTags} selectedTag={selectedTag} onTagSelect={setSelectedTag}
           isPro={isPro} onUpgrade={() => setIsProModalOpen(true)}
           onOpenSearch={() => setCmdOpen(true)}
@@ -657,10 +672,17 @@ export default function App() {
                   <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-[#6B8D86]">IntentList</p>
                 </div>
               </div>
-              <button onClick={() => setIsMobileContextOpen(true)}
-                className="rounded-2xl border border-[#CFE6DA] bg-white/85 px-3 py-3 text-[10px] font-mono uppercase tracking-[0.24em] text-[#42635C] shadow-sm">
-                {selectedTask ? 'Task' : 'Info'}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => setIsDark(d => !d)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#CFE6DA] bg-white/85 text-[#42635C] shadow-sm transition-all"
+                  title={isDark ? 'Light mode' : 'Dark mode'}>
+                  {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </button>
+                <button onClick={() => setIsMobileContextOpen(true)}
+                  className="rounded-2xl border border-[#CFE6DA] bg-white/85 px-3 py-3 text-[10px] font-mono uppercase tracking-[0.24em] text-[#42635C] shadow-sm">
+                  {selectedTask ? 'Task' : 'Info'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -672,7 +694,7 @@ export default function App() {
               </button>
             </div>
           )}
-          {!isPomodoroView && activeView !== 'weekly' && activeView !== 'templates' && activeView !== 'habits' && !(isDeepWorkMode || isZenMode) && (
+          {!isPomodoroView && activeView !== 'weekly' && activeView !== 'templates' && activeView !== 'habits' && activeView !== 'insights' && !(isDeepWorkMode || isZenMode) && (
             <header className="mb-10 flex flex-col gap-6 transition-all duration-700 lg:mb-16">
               <div className="flex-1 lg:mr-8">
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 lg:mb-8">
@@ -682,10 +704,17 @@ export default function App() {
                         ? `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, ${user.email.split('@')[0]}`
                         : activeView.charAt(0).toUpperCase() + activeView.slice(1)}
                     </h2>
-                    <button onClick={() => setIsDeepWorkMode(!isDeepWorkMode)}
-                      className="flex items-center gap-2 self-start px-4 py-2 rounded-full bg-white/90 border border-[#CFE6DA] text-[10px] font-mono tracking-widest uppercase text-[#5B7A75] hover:text-[#128D57] hover:border-[#13B96D]/40 transition-all shadow-sm">
-                      <Sparkles className="w-3 h-3" /> Deep Work
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={() => setIsDeepWorkMode(!isDeepWorkMode)}
+                        className="flex items-center gap-2 self-start px-4 py-2 rounded-full bg-white/90 border border-[#CFE6DA] text-[10px] font-mono tracking-widest uppercase text-[#5B7A75] hover:text-[#128D57] hover:border-[#13B96D]/40 transition-all shadow-sm">
+                        <Sparkles className="w-3 h-3" /> Deep Work
+                      </button>
+                      <button onClick={() => setIsDark(d => !d)}
+                        title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                        className="flex items-center justify-center w-9 h-9 rounded-full bg-white/90 border border-[#CFE6DA] text-[#5B7A75] hover:text-[#128D57] hover:border-[#13B96D]/40 transition-all shadow-sm">
+                        {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                   {(activeView === 'today' || activeView === 'digest') && (
                     <div className="mt-2 flex items-center gap-4">
@@ -739,7 +768,7 @@ export default function App() {
                   key={activeView + (activeView === 'calendar' ? selectedDate.toISOString() : '') + (selectedTag || '')}
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                  className={cn(!isPomodoroView && 'pb-24')}>
+                  className={cn(!isPomodoroView && 'pb-24 lg:pb-24')}>
 
                   {selectedTag && (
                     <div className="mb-10 flex items-center gap-4">
@@ -769,7 +798,7 @@ export default function App() {
                   )}
 
                   {activeView === 'digest' ? (
-                    <DailyDigest tasks={tasks} user={user} onCarryForward={handleCarryForward} onViewChange={handleViewChange} />
+                    <DailyDigest tasks={tasks} user={user} onCarryForward={handleCarryForward} onViewChange={handleViewChange} onUpgrade={() => setIsProModalOpen(true)} />
                   ) : activeView === 'weekly' ? (
                     <div>
                       <div className="flex items-center justify-end mb-4 lg:hidden">
@@ -784,6 +813,17 @@ export default function App() {
                     <Templates onApply={handleApplyTemplate} />
                   ) : activeView === 'habits' ? (
                     <HabitTracker />
+                  ) : activeView === 'insights' ? (
+                    <div className="space-y-6 pb-24">
+                      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+                        <p className="text-[10px] font-mono uppercase tracking-[0.35em] text-[#6B8D86] mb-2">
+                          {new Date().toLocaleDateString('en', { weekday:'long', month:'long', day:'numeric' })}
+                        </p>
+                        <h2 className="text-3xl font-serif italic text-[#1A3142] mb-1">Your productivity profile.</h2>
+                        <p className="text-sm text-[#6B8D86]">Calculated from your task history. Updates daily.</p>
+                      </motion.div>
+                      <InsightsPanel tasks={tasks} isPro={isPro} onUpgrade={() => setIsProModalOpen(true)} />
+                    </div>
                   ) : activeView === 'calendar' ? (
                     <div className="space-y-12">
                       <div className="glass p-8 rounded-[2rem]">
@@ -861,7 +901,7 @@ export default function App() {
               className="fixed inset-y-0 left-0 z-50 lg:hidden">
               <div className="relative h-full">
                 <Sidebar activeView={activeView} onViewChange={handleViewChange} counts={counts}
-                  onLogout={async () => { await authService.logout(); setUser(null); setAuthMode('login'); setAuthScreen('landing'); }}
+                  onLogout={async () => { await authService.logout(); clearAllNotifications(); setUser(null); setAuthMode('login'); setAuthScreen('landing'); }}
                   tags={allTags} selectedTag={selectedTag}
                   onTagSelect={tag => { setSelectedTag(tag); setIsMobileNavOpen(false); }}
                   isPro={isPro} onUpgrade={() => { setIsProModalOpen(true); setIsMobileNavOpen(false); }}
@@ -895,8 +935,23 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Mobile bottom nav — shown instead of hamburger for primary navigation */}
+      {!isPomodoroView && !isZenMode && !isDeepWorkMode && isMobileLayout && (
+        <MobileBottomNav
+          activeView={activeView}
+          onViewChange={handleViewChange}
+          overdueCount={counts.overdue}
+          isPro={isPro}
+          onAddTask={() => {
+            // Scroll to top so InputBox is visible
+            document.querySelector('input[placeholder]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }}
+        />
+      )}
+
       {/* Pro modal */}
       <ProModal isOpen={isProModalOpen} onClose={() => setIsProModalOpen(false)}
+        tasks={tasks}
         onUpgrade={() => { setUser(prev => prev ? { ...prev, plan: 'pro' } : null); setIsProModalOpen(false); setShowProWelcome(true); }} />
 
       {/* Pro welcome */}

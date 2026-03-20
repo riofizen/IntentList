@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -16,25 +16,52 @@
     <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
 
-    <!-- SEO / Open Graph -->
-    <meta name="description" content="IntentList — your digital brain dump. Capture, organise, and focus." />
-    <meta property="og:title" content="IntentList" />
-    <meta property="og:description" content="Your digital brain, in motion." />
-    <meta property="og:type" content="website" />
+    <!-- Primary SEO -->
+    <title>IntentList — Tasks, Habits &amp; Focus Timer in one calm app</title>
+    <meta name="description" content="IntentList turns brain dumps into structured tasks with smart natural language parsing, a beautiful Pomodoro timer, habit tracker, weekly review, and personal productivity insights. Free to start." />
+    <meta name="keywords" content="pomodoro timer app free, habit tracker app, task manager natural language, daily planner app, brain dump app, focus timer, productivity app, weekly review, best pomodoro app 2026" />
+    <meta name="author" content="IntentList" />
+    <link rel="canonical" href="https://intentlist.vercel.app" />
 
-    <title>IntentList</title>
+    <!-- Open Graph -->
+    <meta property="og:type"         content="website" />
+    <meta property="og:url"          content="https://intentlist.vercel.app" />
+    <meta property="og:title"        content="IntentList — Tasks. Habits. Focus. All in one calm space." />
+    <meta property="og:description"  content="Type anything. IntentList parses dates, times, priorities, and tags automatically. The most beautiful Pomodoro timer, habit tracker, and personal insights. Free." />
+    <meta property="og:image"        content="https://intentlist.vercel.app/og-image.png" />
+    <meta property="og:image:width"  content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name"    content="IntentList" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="IntentList — The calm task + habit + focus app" />
+    <meta name="twitter:description" content="Brain dump anything. IntentList figures out the rest. Tasks, habits, Pomodoro, weekly review, insights. Free plan. $5/mo Pro." />
+    <meta name="twitter:image"       content="https://intentlist.vercel.app/og-image.png" />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"IntentList","applicationCategory":"ProductivityApplication","operatingSystem":"Web, iOS PWA, Android PWA","url":"https://intentlist.vercel.app","description":"IntentList turns brain dumps into structured tasks with smart NLP, Pomodoro timer, habit tracker, weekly review, and personal productivity insights.","offers":[{"@type":"Offer","name":"Free","price":"0","priceCurrency":"USD"},{"@type":"Offer","name":"Pro","price":"5","priceCurrency":"USD","billingPeriod":"P1M"}],"featureList":["Natural language task parsing","Pomodoro focus timer with ambient sounds","Daily habit tracker with streaks","Weekly review","Personal productivity insights","Command palette Cmd+K","Progressive Web App"]}</script>
+
+    <!-- Dark mode: apply before first paint to prevent flash -->
+    <script>
+      try {
+        if (localStorage.getItem('intentlist_dark_mode') === 'true') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch(e) {}
+    </script>
+
+    <!-- Fonts preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-
-    <!-- Register service worker -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {
-            // SW registration failed — app still works normally
-          });
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
         });
       }
     </script>

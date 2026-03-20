@@ -13,12 +13,12 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   alt = 'IntentList logo',
 }) => {
   return (
-    <div className={`flex items-center justify-center ${className}`.trim()}>
+    <div className={`flex items-center justify-center overflow-hidden ${className}`.trim()}>
       <img
         src={logoSrc}
         alt={alt}
         draggable={false}
-        className={`h-full w-full object-contain ${imgClassName}`.trim()}
+        className={`h-full w-full object-contain scale-[1.6] origin-center ${imgClassName}`.trim()}
       />
     </div>
   );

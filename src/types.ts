@@ -40,5 +40,6 @@ export type ViewType =
   | 'digest'
   | 'weekly'
   | 'templates'
-  | 'habits';
+  | 'habits'
+  | 'insights';
 

@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Calendar as CalendarIcon, CheckCircle2, Clock, List, LogOut,
   History, Timer, Sunrise, BarChart3, LayoutTemplate, Crown,
-  Dumbbell, Search, Command,
+  Dumbbell, Search, Command, Sparkles,
 } from 'lucide-react';
 import { ViewType } from '../types';
 import { clsx, type ClassValue } from 'clsx';
@@ -41,15 +41,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const secondaryItems = [
     { id: 'habits',    label: 'Habits',         icon: Dumbbell },
-    { id: 'timeline',  label: 'Timeline',       icon: History },
-    { id: 'all',       label: 'All Tasks',      icon: List,         shortcut: 'A' },
-    { id: 'calendar',  label: 'Calendar',       icon: CalendarIcon },
-    { id: 'weekly',    label: 'Weekly Review',  icon: BarChart3,    shortcut: 'W' },
-    { id: 'pomodoro',  label: 'Focus Timer',    icon: Timer },
-    { id: 'templates', label: 'Templates',      icon: LayoutTemplate },
+    { id: 'insights',  label: 'Insights',        icon: Sparkles, badge: 'Pro' },
+    { id: 'timeline',  label: 'Timeline',        icon: History },
+    { id: 'all',       label: 'All Tasks',       icon: List,         shortcut: 'A' },
+    { id: 'calendar',  label: 'Calendar',        icon: CalendarIcon },
+    { id: 'weekly',    label: 'Weekly Review',   icon: BarChart3,    shortcut: 'W' },
+    { id: 'pomodoro',  label: 'Focus Timer',     icon: Timer },
+    { id: 'templates', label: 'Templates',       icon: LayoutTemplate },
   ];
 
-  const renderItem = (item: { id: string; label: string; icon: React.ElementType; shortcut?: string }) => {
+  const renderItem = (item: { id: string; label: string; icon: React.ElementType; shortcut?: string; badge?: string }) => {
     const isActive = activeView === item.id && !selectedTag;
     const Icon = item.icon;
     return (
@@ -76,6 +77,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               isActive ? 'bg-[#D8F0E4] text-[#0E784A]' : 'bg-[#E6F3EC] text-[#5F7F78] group-hover:bg-white group-hover:text-[#33524C]'
             )}>
               {counts[item.id as ViewType]}
+            </span>
+          )}
+          {'badge' in item && item.badge && counts[item.id as ViewType] === 0 && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide"
+              style={{ background: 'rgba(19,185,109,0.12)', color: '#0D8A4E' }}>
+              {item.badge}
             </span>
           )}
           {item.shortcut && (

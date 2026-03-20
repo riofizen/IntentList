@@ -1,15 +1,17 @@
 import React, { useMemo } from 'react';
 import { Task } from '../types';
 import { format, isToday, parseISO, startOfToday, isYesterday } from 'date-fns';
-import { CheckCircle2, AlertCircle, ChevronRight, Zap, Clock, Target, Flame } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ChevronRight, Zap, Clock, Target, Flame, Sparkles, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../App';
+import { getTeaserInsight } from '../lib/insights';
 
 interface DailyDigestProps {
   tasks: Task[];
   user: { email: string; plan: string };
   onCarryForward: () => void;
   onViewChange: (view: 'today' | 'overdue') => void;
+  onUpgrade: () => void;
 }
 
 function getGreeting(email: string): { greeting: string; sub: string } {
@@ -36,6 +38,7 @@ export const DailyDigest: React.FC<DailyDigestProps> = ({
   user,
   onCarryForward,
   onViewChange,
+  onUpgrade,
 }) => {
   const todayTasks = useMemo(() => tasks.filter(t => isToday(parseISO(t.date))), [tasks]);
   const overdueTasks = useMemo(
@@ -61,6 +64,8 @@ export const DailyDigest: React.FC<DailyDigestProps> = ({
   );
 
   const highCount = todayTasks.filter(t => t.priority === 'high' && !t.completed).length;
+  const isPro     = user.plan === 'pro';
+  const teaser    = useMemo(() => getTeaserInsight(tasks), [tasks]);
 
   const { greeting, sub } = getGreeting(user.email);
   const motivation = getMotivation(rate, total);
@@ -238,6 +243,47 @@ export const DailyDigest: React.FC<DailyDigestProps> = ({
           <CheckCircle2 className="w-10 h-10 text-[#13B96D]" />
           <p className="text-xl font-serif italic text-[#1A3142]">Day complete.</p>
           <p className="text-sm text-[#5B7A75]">Every task done. Take a moment to breathe.</p>
+        </motion.div>
+      )}
+
+      {/* Insights Teaser — always shown, actionable conclusion locked for free */}
+      {teaser && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="relative overflow-hidden rounded-2xl border"
+          style={{ background: 'rgba(19,185,109,0.04)', borderColor: 'rgba(19,185,109,0.2)' }}
+        >
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-[#13B96D] flex-shrink-0" />
+              <span className="text-xs font-bold text-[#1A3240]">Your data says</span>
+              {!isPro && (
+                <span className="ml-auto text-[9px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(19,185,109,0.15)', color: '#0D8A4E' }}>Pro insight</span>
+              )}
+            </div>
+            <p className="text-sm font-medium text-[#1A3240] mb-2">{teaser.visible}</p>
+            {isPro ? (
+              <p className="text-xs text-[#4A7568] leading-relaxed">{teaser.locked}</p>
+            ) : (
+              <div className="relative">
+                <p className="text-xs text-[#4A7568] leading-relaxed"
+                  style={{ filter: 'blur(3.5px)', userSelect: 'none' }}>
+                  {teaser.locked}
+                </p>
+                <div className="absolute inset-0 flex items-center gap-2">
+                  <Lock className="w-3 h-3 text-[#13B96D] flex-shrink-0" />
+                  <button
+                    onClick={onUpgrade}
+                    className="text-xs font-bold text-[#13B96D] hover:text-[#0D8A4E] transition-colors">
+                    Unlock with Pro →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </motion.div>
       )}
 
